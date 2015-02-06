@@ -1,0 +1,121 @@
+0 info it worked if it ends with ok
+1 verbose cli [ 'node', '/usr/local/bin/npm', 'install' ]
+2 info using npm@2.0.0
+3 info using node@v0.10.12
+4 verbose readDependencies using package.json deps
+5 verbose install where, deps [ '/Users/andresabril/Dropbox/Proyectos/Clientes/Novelza/Doclinea/doclineaapi',
+5 verbose install   [ 'express',
+5 verbose install     'jade',
+5 verbose install     'less-middleware',
+5 verbose install     'mongoose',
+5 verbose install     'nodemailer',
+5 verbose install     'apn',
+5 verbose install     'stylus',
+5 verbose install     'knox',
+5 verbose install     'node-gcm',
+5 verbose install     'bcrypt',
+5 verbose install     'colors',
+5 verbose install     'nodemoni' ] ]
+6 info preinstall DocLinea@0.0.1
+7 verbose readDependencies using package.json deps
+8 verbose already installed skipping apn@1.4.1 /Users/andresabril/Dropbox/Proyectos/Clientes/Novelza/Doclinea/doclineaapi
+9 verbose already installed skipping stylus@* /Users/andresabril/Dropbox/Proyectos/Clientes/Novelza/Doclinea/doclineaapi
+10 verbose already installed skipping knox@* /Users/andresabril/Dropbox/Proyectos/Clientes/Novelza/Doclinea/doclineaapi
+11 verbose already installed skipping node-gcm@* /Users/andresabril/Dropbox/Proyectos/Clientes/Novelza/Doclinea/doclineaapi
+12 verbose already installed skipping bcrypt@* /Users/andresabril/Dropbox/Proyectos/Clientes/Novelza/Doclinea/doclineaapi
+13 verbose already installed skipping colors@* /Users/andresabril/Dropbox/Proyectos/Clientes/Novelza/Doclinea/doclineaapi
+14 verbose cache add [ 'nodemoni@*', null ]
+15 verbose cache add spec="nodemoni@*" args=["nodemoni@*",null]
+16 verbose parsed spec { raw: 'nodemoni@*',
+16 verbose parsed spec   scope: null,
+16 verbose parsed spec   name: 'nodemoni',
+16 verbose parsed spec   rawSpec: '*',
+16 verbose parsed spec   spec: '*',
+16 verbose parsed spec   type: 'range' }
+17 verbose parsed spec { raw: 'nodemoni@*',
+17 verbose parsed spec   scope: null,
+17 verbose parsed spec   name: 'nodemoni',
+17 verbose parsed spec   rawSpec: '*',
+17 verbose parsed spec   spec: '*',
+17 verbose parsed spec   type: 'range' }
+18 verbose addNamed [ 'nodemoni', '*' ]
+19 verbose addNamed [ null, '*' ]
+20 silly lockFile 09789feb-nodemoni nodemoni@*
+21 verbose lock nodemoni@* /Users/andresabril/.npm/09789feb-nodemoni.lock
+22 verbose already installed skipping less-middleware@* /Users/andresabril/Dropbox/Proyectos/Clientes/Novelza/Doclinea/doclineaapi
+23 verbose already installed skipping express@3.3.3 /Users/andresabril/Dropbox/Proyectos/Clientes/Novelza/Doclinea/doclineaapi
+24 silly addNameRange { name: 'nodemoni', range: '*', hasData: false }
+25 verbose mapToRegistry name nodemoni
+26 verbose mapToRegistry uri https://registry.npmjs.org/nodemoni
+27 verbose already installed skipping mongoose@3.6.14 /Users/andresabril/Dropbox/Proyectos/Clientes/Novelza/Doclinea/doclineaapi
+28 verbose already installed skipping jade@* /Users/andresabril/Dropbox/Proyectos/Clientes/Novelza/Doclinea/doclineaapi
+29 verbose request on initialization, where is /nodemoni
+30 verbose request after pass 1, where is /nodemoni
+31 verbose request url raw /nodemoni
+32 verbose request resolving registry [ 'https://registry.npmjs.org/', './nodemoni' ]
+33 verbose request after pass 2, where is https://registry.npmjs.org/nodemoni
+34 verbose request no auth needed
+35 info attempt registry request try #1 at 12:43:22
+36 verbose request id 9b55671892273656
+37 http request GET https://registry.npmjs.org/nodemoni
+38 verbose already installed skipping nodemailer@* /Users/andresabril/Dropbox/Proyectos/Clientes/Novelza/Doclinea/doclineaapi
+39 http 404 https://registry.npmjs.org/nodemoni
+40 verbose headers { date: 'Thu, 08 Jan 2015 17:43:23 GMT',
+40 verbose headers   server: 'CouchDB/1.5.0 (Erlang OTP/R14B04)',
+40 verbose headers   'content-type': 'application/json',
+40 verbose headers   'cache-control': 'max-age=0',
+40 verbose headers   'content-length': '52',
+40 verbose headers   'accept-ranges': 'bytes',
+40 verbose headers   via: '1.1 varnish',
+40 verbose headers   age: '0',
+40 verbose headers   'x-served-by': 'cache-atl6228-ATL',
+40 verbose headers   'x-cache': 'MISS',
+40 verbose headers   'x-cache-hits': '0',
+40 verbose headers   'x-timer': 'S1420739003.144239,VS0,VE32',
+40 verbose headers   'keep-alive': 'timeout=10, max=50',
+40 verbose headers   connection: 'Keep-Alive' }
+41 silly registry.get cb [ 404,
+41 silly registry.get   { date: 'Thu, 08 Jan 2015 17:43:23 GMT',
+41 silly registry.get     server: 'CouchDB/1.5.0 (Erlang OTP/R14B04)',
+41 silly registry.get     'content-type': 'application/json',
+41 silly registry.get     'cache-control': 'max-age=0',
+41 silly registry.get     'content-length': '52',
+41 silly registry.get     'accept-ranges': 'bytes',
+41 silly registry.get     via: '1.1 varnish',
+41 silly registry.get     age: '0',
+41 silly registry.get     'x-served-by': 'cache-atl6228-ATL',
+41 silly registry.get     'x-cache': 'MISS',
+41 silly registry.get     'x-cache-hits': '0',
+41 silly registry.get     'x-timer': 'S1420739003.144239,VS0,VE32',
+41 silly registry.get     'keep-alive': 'timeout=10, max=50',
+41 silly registry.get     connection: 'Keep-Alive' } ]
+42 silly lockFile 09789feb-nodemoni nodemoni@*
+43 silly lockFile 09789feb-nodemoni nodemoni@*
+44 verbose stack Error: 404 Not Found: nodemoni
+44 verbose stack     at RegClient.<anonymous> (/usr/local/lib/node_modules/npm/node_modules/npm-registry-client/lib/request.js:259:14)
+44 verbose stack     at Request._callback (/usr/local/lib/node_modules/npm/node_modules/npm-registry-client/lib/request.js:198:65)
+44 verbose stack     at Request.self.callback (/usr/local/lib/node_modules/npm/node_modules/request/request.js:236:22)
+44 verbose stack     at Request.EventEmitter.emit (events.js:98:17)
+44 verbose stack     at Request.<anonymous> (/usr/local/lib/node_modules/npm/node_modules/request/request.js:1142:14)
+44 verbose stack     at Request.EventEmitter.emit (events.js:117:20)
+44 verbose stack     at IncomingMessage.<anonymous> (/usr/local/lib/node_modules/npm/node_modules/request/request.js:1096:12)
+44 verbose stack     at IncomingMessage.EventEmitter.emit (events.js:117:20)
+44 verbose stack     at _stream_readable.js:910:16
+44 verbose stack     at process._tickCallback (node.js:415:13)
+45 verbose statusCode 404
+46 verbose pkgid nodemoni
+47 verbose cwd /Users/andresabril/Dropbox/Proyectos/Clientes/Novelza/Doclinea/doclineaapi
+48 error Darwin 14.0.0
+49 error argv "node" "/usr/local/bin/npm" "install"
+50 error node v0.10.12
+51 error npm  v2.0.0
+52 error code E404
+53 error 404 Not Found: nodemoni
+53 error 404
+53 error 404 'nodemoni' is not in the npm registry.
+53 error 404 You should bug the author to publish it (or use the name yourself!)
+53 error 404 It was specified as a dependency of 'DocLinea'
+53 error 404
+53 error 404 Note that you can also install from a
+53 error 404 tarball, folder, http url, or git url.
+54 verbose exit [ 1, true ]
