@@ -24,7 +24,7 @@ var allowCrossDomain = function(req, res, next) {
     }
 }
 
-app.set('port', process.env.PORT || 1414);
+app.set('port', process.env.PORT || 2000);
 app.set('views', __dirname + '/views');
 app.set('view engine', 'jade');
 app.set('view options', { pretty: false });
@@ -93,9 +93,9 @@ app.post('/api_1.0/User/NewPassword/:token', model.newPasswordUser);
 //Invite
 app.post('/api_1.0/User/Invite', model.userInvite);
 //Fav Messenger
-app.post('/api_1.0/User/Fav/:user_id', model.favDoctor);
+app.post('/api_1.0/User/Fav/:user_id', model.favMessenger);
 //UnFav Messenger
-app.post('/api_1.0/User/UnFav/:user_id', model.unFavDoctor);
+app.post('/api_1.0/User/UnFav/:user_id', model.unFavMessenger);
 ///////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////

@@ -45,7 +45,7 @@ var webapp = "192.241.187.135:3000"
 //////////////////////////////////
 //SubDocumentSchema///////////////
 //////////////////////////////////
-
+var Device = new mongoose.Schema({type:String, os:String, token:String, name:String}, {_id:false});
 //////////////////////////////////
 //End SubDocumentSchema///////////
 //////////////////////////////////
@@ -1343,7 +1343,7 @@ exports.deleteDeliveryItem = function(req,res){
 	DeliveryItem.remove({
 						_id:req.params.delivery_id, 
 						user_id:req.body.user_id,
-						status: "available"
+						status: "available",
 						overall_status: "requested"
 					},
 	function(err){

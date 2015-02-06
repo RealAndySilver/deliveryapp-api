@@ -1,9 +1,9 @@
 {
-  "name": "DocLinea",
+  "name": "Mensajeria",
   "version": "0.0.1",
   "private": true,
   "scripts": {
-    "start": "nodemon doclinea.js"
+    "start": "nodemon mensajeria.js"
   },
   "dependencies": {
     "express": "3.3.3",
