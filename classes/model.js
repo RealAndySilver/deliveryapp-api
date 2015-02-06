@@ -29,10 +29,10 @@ mongoose.connect("mongodb://iAmUser:iAmStudio1@ds053788.mongolab.com:53788/mensa
 //Global Vars/////////////////////
 //////////////////////////////////
 var exclude = {/*password:0*/};
-var verifyEmailVar = false;
+var verifyEmailVar = true;
 
 //Producción
-var hostname = "192.241.187.135:1414";
+var hostname = "192.241.187.135:2000";
 var webapp = "192.241.187.135:3000"
 //Dev
 //var hostname = "192.168.0.37:1414";
@@ -282,7 +282,7 @@ utils.log("User/Create","Recibo:",JSON.stringify(req.body));
 		devices: device_array,
 	}).save(function(err,object){
 		if(err){
-			res.json(err);
+			res.json({status: false, message: "Error al crear la cuenta.", err: err});
 		}
 		else{
 			//Una vez creado el documento en la base de datos procedemos a enviar un email
@@ -322,7 +322,7 @@ exports.authenticateUser = function(req,res){
 //Además de esto, si el usuario está en la versión móvil, nos permite capturar información 
 //importante sobre su dispositivo
 
-/*Log*/utils.log("User/Authenticate","Recibo:",JSON.stringify(req.body));
+/*Log*/utils.log("User/Login","Recibo:",JSON.stringify(req.body));
 
 	//Buscamos inicialmente que la cuenta del usuario exista
 	User.findOne({email:req.body.email},exclude,function(err,user){
