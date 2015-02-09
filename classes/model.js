@@ -28,7 +28,7 @@ mongoose.connect("mongodb://iAmUser:iAmStudio1@ds053788.mongolab.com:53788/mensa
 //////////////////////////////////
 //Global Vars/////////////////////
 //////////////////////////////////
-var exclude = {/*password:0*/};
+var exclude = {password:0};
 var verifyEmailVar = true;
 
 //Producción
@@ -99,7 +99,6 @@ var MessengerSchema= new mongoose.Schema({
 	device : {type: [Device], required:false},
 	favorites : {type: Array, required:false},
 });
-	MessengerSchema.index({location:"2dsphere", required:false})
 	Messenger= mongoose.model('Messenger',MessengerSchema);
 //////////////////////////////////
 //End of Doctor Schema////////////
@@ -128,7 +127,9 @@ var DeliveryItemSchema= new mongoose.Schema({
 	status : {type: String, required:true}, //available, accepted, in-transit, delivered, returning, returned, aborted
 	pickup_time : {type: Date, required:false},
 	image: {type: Object, required:false},
-}),
+});
+	DeliveryItemSchema.index({pickup_location:"2dsphere", required:false});
+	DeliveryItemSchema.index({delivery_location:"2dsphere", required:false});
 	DeliveryItem= mongoose.model('DeliveryItem',DeliveryItemSchema);
 //////////////////////////////////
 //End of Appointment  Schema//////
@@ -256,17 +257,17 @@ exports.deleteAdmin = function(req,res){
 //////////////////////////////////
 //Create*
 exports.createUser = function(req,res){
-//Esta función crea un usuario nuevo a partir de una peticion POST
-var device_array = [];
+	//Esta función crea un usuario nuevo a partir de una peticion POST
+	var device_array = [];
+	
+	//Revisamos la información que llega y la parseamos en un formato json conocido
+	if(req.body.device_info){
+		req.body.device_info = utils.isJson(req.body.device_info) ? JSON.parse(req.body.device_info): req.body.device_info ;
+		device_array.push(req.body.device_info);
+	}
 
-//Revisamos la información que llega y la parseamos en un formato json conocido
-if(req.body.device_info){
-	req.body.device_info = utils.isJson(req.body.device_info) ? JSON.parse(req.body.device_info): req.body.device_info ;
-	device_array.push(req.body.device_info);
-}
-
-//Procedemos a crear el usuario en la base de datos con la información que llega en el POST
-utils.log("User/Create","Recibo:",JSON.stringify(req.body));
+	//Procedemos a crear el usuario en la base de datos con la información que llega en el POST
+	utils.log("User/Create","Recibo:",JSON.stringify(req.body));
 	new User({
 		email : req.body.email,
 		//El estado inicial de confirmación email debe ser false
@@ -307,7 +308,7 @@ exports.getUserByEmail = function(req,res){
 };
 exports.getUserByID = function(req,res){
 	//Esta función expone un servicio para buscar un usuario por id
-	User.findOne({_id:req.params.id},exclude,function(err,object){
+	User.findOne({_id:req.params.user_id},exclude,function(err,object){
 		if(!object){
 			res.json({status: false, error: "not found"});
 		}
@@ -483,7 +484,7 @@ var filtered_body = utils.remove_empty(req.body);
 /*Log*/utils.log("User/Update","Recibo:",JSON.stringify(filtered_body));
 	
 	//Buscamos el usuario que se desea actualizar por medio de su _id
-	User.findOneAndUpdate({_id:req.params.id},
+	User.findOneAndUpdate({_id:req.params.user_id},
 		//Seteamos el nuevo contenido
 	   {$set:filtered_body}, 
 	   	function(err,object){
@@ -728,7 +729,7 @@ exports.getMessengerByEmail = function(req,res){
 };
 exports.getMessengerByID = function(req,res){
 	//Esta función expone un servicio para buscar un mensajero por id
-	Messenger.findOne({_id:req.params.id},exclude,function(err,object){
+	Messenger.findOne({_id:req.params.messenger_id},exclude,function(err,object){
 		if(!object){
 			res.json({status: false, error: "not found"});
 		}
@@ -868,7 +869,7 @@ var filtered_body = utils.remove_empty(req.body);
 /*Log*/utils.log("User/Update","Recibo:",JSON.stringify(filtered_body));
 	
 	//Buscamos el usuario que se desea actualizar por medio de su _id
-	Messenger.findOneAndUpdate({_id:req.params.id},
+	Messenger.findOneAndUpdate({_id:req.params.messenger_id},
 		//Seteamos el nuevo contenido
 	   {$set:filtered_body}, 
 	   	function(err,object){
@@ -936,7 +937,7 @@ exports.newPasswordMessenger = function(req,res){
 };
 exports.changePasswordMessenger = function(req,res){
 /*Log*/utils.log("Messenger/Password","Recibo:",JSON.stringify(req.body));
-	Messenger.findOne({_id:req.params.id},function(err,object){
+	Messenger.findOne({_id:req.params.messenger_id},function(err,object){
 		if(!object){
 			res.json({status: false, error: "not found"});
 		}
@@ -965,7 +966,7 @@ exports.changePasswordMessenger = function(req,res){
 };
 //Delete
 exports.deleteMessenger = function(req,res){
-	Messenger.remove({_id:req.params.id},function(err){
+	Messenger.remove({_id:req.params.messenger_id},function(err){
 		if(err){
 			res.json(error.notFound);
 		}
@@ -1283,7 +1284,108 @@ exports.deliverDeliveryItem = function(req,res){
 		   	}
 	});
 };
+//Experiment
+exports.nextStatus = function(req,res){
+	//Este método identifica el estado del pedido y continúa con el estado siguiente
+	//de manera automática
+	utils.log("DeliveryItem/NextStatus/"+req.params.delivery_id,"Recibo:",JSON.stringify(req.body));
+	//Verificamos que llegue el objeto mensajero con un id
+	if(req.body.messenger_info._id){
+		req.body.messenger_info = utils.isJson(req.body.messenger_info) ? 
+										JSON.parse(req.body.messenger_info): 
+										req.body.messenger_info ;
+	}
+	else{
+		res.json({status: false, error: "No se encontró el objeto mensajero"});
+		return;
+	}
+	//Procedemos a actualizar el DeliveryItem
+	//Este debe tener condicion de overall_status: started y 
+	//el id correcto del delivery y el mensajero
+	DeliveryItem.findOne({_id:req.params.delivery_id}, 
+	   function(err,object){
+		   	if(!object){
+			   	res.json({status: false, error: "No se encontró el DeliveryItem"});
+		   	}
+		   	else{
+			   	if(object.status == "available"){
+					object.messenger_id = req.body.messenger_info._id;
+			   		object.messenger_info = req.body.messenger_info;
+			   		object.status = "accepted";
+			   		object.overall_status = "started";
+					object.save(function(err, result){
+						utils.log("DeliveryItem/Accept","Envío:",JSON.stringify(object));
+						res.json({status:true, message:"DeliveryItem aceptado exitosamente.", response:object});
+					});
+					return;
+			   	}
+			   	else if (object.status == "accepted"){
+				   	object.status = "in-transit";
+				   	object.save(function(err, result){
+				   		utils.log("DeliveryItem/InTransit","Envío:",JSON.stringify(object));
+				   		res.json({status:true, message:"DeliveryItem ahora está in-transit.", response:object});					});
+					return;
+			   	}
+				else{
+				   	//Verificamos que roundtrip sea positivo
+				   	//Este caso indica que el item después de entregado debe regresar
+				   	//al punto de partida
+					if(object.roundtrip){
+						//Si el item se encuentra en tránsito debemos setearlo como
+						//returning
+						if(object.status = "in-transit"){
+							object.status = "returning";
+							object.save(function(err, result){
+						   	utils.log("DeliveryItem/Deliver","Envío:",JSON.stringify(object));
+								res.json({
+											status:true, 
+											message:"DeliveryItem ahora está returning.", 
+											response:result
+										});
+							});
+						}
+						//Si el item se encuentra en tránsito debemos setearlo como
+						//returned y el overall_status se marca cómo finished
+						//este servicio ya está terminado y el motorizado cumplió
+						else if(object.status = "returning"){
+							object.status = "returned";
+							object.overall_status = "finished";
+							object.save(function(err, result){
+						   	utils.log("DeliveryItem/Deliver","Envío:",JSON.stringify(object));
+								res.json({
+											status:true, 
+											message:"DeliveryItem ahora está finished.", 
+											response:result
+										});
+							});
+						}
+					}
+					//Este caso indica que el item después de entregado NO debe regresar
+				   	//al punto de partida
+					else{
+						//El item se encuentra en tránsito, debemos setearlo como
+						//delivered y el overall_status se marca cómo finished
+						//este servicio ya está terminado y el motorizado cumplió
+						object.status = "delivered";
+						object.overall_status = "finished";
+						object.save(function(err, result){
+						utils.log("DeliveryItem/Delivered","Envío:",JSON.stringify(object));
+							res.json({
+										status:true, 
+										message:"DeliveryItem ahora está delivered.", 
+										response:result
+									});
+						});
+					}
+				   	res.json({status:true, message:"DeliveryItem ahora está in-transit.", response:object});
+			   	}
+		   	}
+	});
+};
+//Abort
 exports.abortDeliveryItem = function(req,res){
+	//Este método sólo puede ser utilizado por el mensajero asignado al pedido
+	//El usuario no podrá abortar ningún delivery
 	utils.log("DeliveryItem/Abort/"+req.params.delivery_id,"Recibo:",JSON.stringify(req.body));
 	//Verificamos que llegue el objeto mensajero con un id
 	if(req.body.messenger_info._id){
@@ -1309,7 +1411,7 @@ exports.abortDeliveryItem = function(req,res){
 		   	else{
 			   	if(object.status = "accepted"){
 					object.status = "available";
-					object.overall_status = "started";
+					object.overall_status = "requested";
 					object.messenger_info = {};
 					object.messenger_id = "";
 					object.save(function(err, result){

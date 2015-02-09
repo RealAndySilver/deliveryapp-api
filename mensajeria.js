@@ -11,7 +11,6 @@ var express = require('express')
 var app = express();
 // all environments
 
-
 var allowCrossDomain = function(req, res, next) {
     res.header('Access-Control-Allow-Origin', '*');
     res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE');
@@ -72,7 +71,7 @@ app.get('/api_1.0/Password/Redirect/:type/:email/:request/:token', model.passwor
 app.post('/api_1.0/User/Create', model.createUser);
 //User Read APIs
 app.get('/api_1.0/User/Email/:email', model.getUserByEmail);
-app.get('/api_1.0/User/:id', model.getUserByID);
+app.get('/api_1.0/User/:user_id', model.getUserByID);
 app.get('/api_1.0/Users', model.getAllUsers);
 app.get('/api_1.0/User/Favorites/:user_id', model.getFavorites);
 //User Deliveries Read APIs
@@ -80,22 +79,22 @@ app.get('/api_1.0/User/StartedDeliveries/:user_id', model.startedDeliveries);
 app.get('/api_1.0/User/RequestedDeliveries/:user_id', model.requestedDeliveries);
 app.get('/api_1.0/User/FinishedDeliveries/:user_id', model.finishedDeliveries);
 //User Authenticate
-app.post('/api_1.0/User/Login', model.authenticateUser);
+app.put('/api_1.0/User/Login', model.authenticateUser);
 //User Update APIs
-app.put('/api_1.0/User/:id', model.updateUser);
+app.put('/api_1.0/User/:user_id', model.updateUser);
 //User Delete APIs
-app.delete('/api_1.0/User/:id', model.deleteUser);
+app.delete('/api_1.0/User/:user_id', model.deleteUser);
 //Change Password
-app.put('/api_1.0/User/Password/:id', model.changePasswordUser);
+app.put('/api_1.0/User/Password/:user_id', model.changePasswordUser);
 //User Recover Password
 app.get('/api_1.0/User/Recover/:email', model.requestRecoverUser);
-app.post('/api_1.0/User/NewPassword/:token', model.newPasswordUser);
+app.put('/api_1.0/User/NewPassword/:token', model.newPasswordUser);
 //Invite
-app.post('/api_1.0/User/Invite', model.userInvite);
+app.put('/api_1.0/User/Invite', model.userInvite);
 //Fav Messenger
-app.post('/api_1.0/User/Fav/:user_id', model.favMessenger);
+app.put('/api_1.0/User/Fav/:user_id', model.favMessenger);
 //UnFav Messenger
-app.post('/api_1.0/User/UnFav/:user_id', model.unFavMessenger);
+app.put('/api_1.0/User/UnFav/:user_id', model.unFavMessenger);
 ///////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////
@@ -107,16 +106,16 @@ app.post('/api_1.0/User/UnFav/:user_id', model.unFavMessenger);
 app.post('/api_1.0/Messenger/Create', model.createMessenger);
 //User Read APIs
 app.get('/api_1.0/Messenger/Email/:email', model.getMessengerByEmail);
-app.get('/api_1.0/Messenger/:id', model.getMessengerByID);
+app.get('/api_1.0/Messenger/:messenger_id', model.getMessengerByID);
 app.get('/api_1.0/Messengers', model.getAllMessengers);
 //User Authenticate
 app.post('/api_1.0/Messenger/Login', model.authenticateMessenger);
 //User Update APIs
-app.put('/api_1.0/Messenger/:id', model.updateMessenger);
+app.put('/api_1.0/Messenger/:messenger_id', model.updateMessenger);
 //User Delete APIs
-app.delete('/api_1.0/Messenger/:id', model.deleteMessenger);
+app.delete('/api_1.0/Messenger/:messenger_id', model.deleteMessenger);
 //Change Password
-app.put('/api_1.0/Messenger/Password/:id', model.changePasswordMessenger);
+app.put('/api_1.0/Messenger/Password/:messenger_id', model.changePasswordMessenger);
 //User Recover Password
 app.get('/api_1.0/Messenger/Recover/:email', model.requestRecoverMessenger);
 app.post('/api_1.0/Messenger/NewPassword/:token', model.newPasswordMessenger);
@@ -142,6 +141,9 @@ app.put('/api_1.0/DeliveryItem/AddPic/:delivery_id', model.addPicToDeliveryItem)
 app.put('/api_1.0/DeliveryItem/Accept/:delivery_id', model.acceptDeliveryItem);
 app.put('/api_1.0/DeliveryItem/InTransit/:delivery_id', model.inTransitDeliveryItem);
 app.put('/api_1.0/DeliveryItem/Deliver/:delivery_id', model.deliverDeliveryItem);
+//Experiment
+app.put('/api_1.0/DeliveryItem/NextStatus/:delivery_id', model.nextStatus);
+////////////
 app.put('/api_1.0/DeliveryItem/Abort/:delivery_id', model.abortDeliveryItem);
 //DeliveryItem Delete APIs
 app.delete('/api_1.0/DeliveryItem/Delete/:delivery_id', model.deleteDeliveryItem);
