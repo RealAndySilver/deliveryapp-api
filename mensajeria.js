@@ -109,7 +109,7 @@ app.get('/api_1.0/Messenger/Email/:email', model.getMessengerByEmail);
 app.get('/api_1.0/Messenger/:messenger_id', model.getMessengerByID);
 app.get('/api_1.0/Messengers', model.getAllMessengers);
 //User Authenticate
-app.post('/api_1.0/Messenger/Login', model.authenticateMessenger);
+app.put('/api_1.0/Messenger/Login', model.authenticateMessenger);
 //User Update APIs
 app.put('/api_1.0/Messenger/:messenger_id', model.updateMessenger);
 //User Delete APIs
@@ -118,9 +118,9 @@ app.delete('/api_1.0/Messenger/:messenger_id', model.deleteMessenger);
 app.put('/api_1.0/Messenger/Password/:messenger_id', model.changePasswordMessenger);
 //User Recover Password
 app.get('/api_1.0/Messenger/Recover/:email', model.requestRecoverMessenger);
-app.post('/api_1.0/Messenger/NewPassword/:token', model.newPasswordMessenger);
+app.put('/api_1.0/Messenger/NewPassword/:token', model.newPasswordMessenger);
 //Invite
-app.post('/api_1.0/Messenger/Invite', model.messengerInvite);
+app.put('/api_1.0/Messenger/Invite', model.messengerInvite);
 ///////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////
@@ -131,8 +131,8 @@ app.post('/api_1.0/Messenger/Invite', model.messengerInvite);
 //DeliveryItem Create APIs
 app.post('/api_1.0/DeliveryItem/Create', model.createDelivery);
 //DeliveryItem Read APIs
-app.get('/api_1.0/DeliveryItem/:id', model.getDeliveryItemByID);
-app.get('/api_1.0/DeliveryItem/Near/:lat/:lon/:maxDistance', model.getNearDeliveryItems);
+app.get('/api_1.0/DeliveryItem/:delivery_id', model.getDeliveryItemByID);
+app.get('/api_1.0/DeliveryItems/Near/:lat/:lon/:maxDistance', model.getNearDeliveryItems);
 app.get('/api_1.0/DeliveryItems', model.getAllDeliveryItems);
 app.get('/api_1.0/DeliveryItems/OverallStatus/:overall_status', model.getByOverallStatus);
 //DeliveryItem Update APIs

@@ -28,7 +28,7 @@ mongoose.connect("mongodb://iAmUser:iAmStudio1@ds053788.mongolab.com:53788/mensa
 //////////////////////////////////
 //Global Vars/////////////////////
 //////////////////////////////////
-var exclude = {password:0};
+var exclude = {/*password:*/};
 var verifyEmailVar = true;
 
 //Producción
@@ -324,7 +324,6 @@ exports.authenticateUser = function(req,res){
 //importante sobre su dispositivo
 
 /*Log*/utils.log("User/Login","Recibo:",JSON.stringify(req.body));
-
 	//Buscamos inicialmente que la cuenta del usuario exista
 	User.findOne({email:req.body.email},exclude,function(err,user){
 		if(!user){
@@ -467,10 +466,11 @@ exports.updateUser = function(req,res){
 /*Log*/utils.log("User/Update","Recibo sin filtro:",JSON.stringify(req.body));
 
 //Cómo medida de seguridad
-//Eliminamos los parámetros _id y email que 
+//Eliminamos los parámetros _id, email y password que 
 //vienen del POST para evitar que se sobreescriban
 req.body._id = '';
 req.body.email = '';
+req.body.password = '';
 
 //Parseamos los settings que llegan en un formato JSON conocido
 if(req.body.settings){
@@ -499,7 +499,7 @@ var filtered_body = utils.remove_empty(req.body);
 };
 //Password
 exports.requestRecoverUser = function(req,res){
-	/*Log*/utils.log("User/Recover","Recibo:",req.params.user_email);
+	/*utils.log("User/Recover","Recibo:",req.params.user_email);*/
 	User.findOne({email:req.params.user_email},function(err,object){
 		if(!object){
 			res.json({status: false, error: "not found"});
@@ -1021,15 +1021,15 @@ utils.log("Delivery","Recibo:",JSON.stringify(req.body));
 		res.json({status: false, message: "El objeto delivery_object viene incompleto."});
 	}
 	//Creamos de manera correcta los objetos GEO para guardarlos en la base de datos
-	req.body.pickup_location = utils.convertInGeoObject(pickup_location);
-	req.body.delivery_location = utils.convertInGeoObject(delivery_location);
+	var pickup_location = utils.convertInGeoObject(req.body.pickup_object);
+	var delivery_location = utils.convertInGeoObject(req.body.delivery_object);
 	
 	new DeliveryItem({
 		user_id : req.body.user_id,
 		user_info: req.body.user_info,
-		pickup_location : req.body.pickup_location,
+		pickup_location : pickup_location,
 		pickup_object: req.body.pickup_object,
-		delivery_location : req.body.delivery_location,	
+		delivery_location : delivery_location,	
 		delivery_object: req.body.delivery_object,
 		roundtrip: req.body.roundtrip,
 		instructions : req.body.instructions,
@@ -1053,7 +1053,7 @@ utils.log("Delivery","Recibo:",JSON.stringify(req.body));
 //Read One
 exports.getDeliveryItemByID = function(req,res){
 	//Esta función expone un servicio para buscar un DeliveryItem por id
-	DeliveryItem.findOne({_id:req.params.id},exclude,function(err,object){
+	DeliveryItem.findOne({_id:req.params.delivery_id},exclude,function(err,object){
 		if(!object){
 			res.json({status: false, error: "not found"});
 		}
@@ -1082,7 +1082,7 @@ exports.getNearDeliveryItems = function(req,res){
 	//Haga la búsqueda por proximidad
 	if(req.params.lat && req.params.lon && req.params.maxDistance){
 		var meters = parseInt(req.params.maxDistance);
-		query = {
+		query.pickup_location = {
 					$near:
 					{
 						$geometry:
@@ -1100,6 +1100,8 @@ exports.getNearDeliveryItems = function(req,res){
 	else{
 		res.json({status: false, error: "Faltan datos para la búsqueda"});
 	}
+		console.log("query: "+JSON.stringify(query));
+
 	utils.log("DeliveryItem/Near/"+req.params.lat+"/"+req.params.lon+"/"+ req.params.maxDistance,"Recibo:","GET");
 	DeliveryItem.find(query,
 		exclude,

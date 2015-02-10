@@ -26,5 +26,6 @@ exports.encrypt = function(data){
 	return encrypt(data);
 };
 exports.compareHash = function (password_in, hash) {
+	console.log("Pass: "+password_in+ "hash: "+hash);
 	return bcrypt.compareSync(password_in, hash);		
 };
