@@ -81,7 +81,7 @@ app.get('/api_1.0/User/FinishedDeliveries/:user_id', model.finishedDeliveries);
 //User Authenticate
 app.put('/api_1.0/User/Login', model.authenticateUser);
 //User Update APIs
-app.put('/api_1.0/User/:user_id', model.updateUser);
+app.put('/api_1.0/User/Update/:user_id', model.updateUser);
 //User Delete APIs
 app.delete('/api_1.0/User/:user_id', model.deleteUser);
 //Change Password
@@ -111,7 +111,7 @@ app.get('/api_1.0/Messengers', model.getAllMessengers);
 //User Authenticate
 app.put('/api_1.0/Messenger/Login', model.authenticateMessenger);
 //User Update APIs
-app.put('/api_1.0/Messenger/:messenger_id', model.updateMessenger);
+app.put('/api_1.0/Messenger/Update/:messenger_id', model.updateMessenger);
 //User Delete APIs
 app.delete('/api_1.0/Messenger/:messenger_id', model.deleteMessenger);
 //Change Password
