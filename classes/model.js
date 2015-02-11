@@ -74,8 +74,8 @@ var UserSchema= new mongoose.Schema({
 	password_recover : {status: {type: Boolean}, token:{type:String}},
 	email_confirmation : {type: Boolean, required:true},
 	name : {type: String, required:true},
-	lastname : {type: String, required:false},
-	mobilephone : {type: String, required:false},
+	lastname : {type: String, required:true},
+	mobilephone: {type: Number, required: true},
 	device : {type: [Device], required:false},
 	favorites : {type: Array, required:false},
 }),
@@ -279,7 +279,7 @@ exports.createUser = function(req,res){
 		password : req.body.password,
 		name : req.body.name,
 		lastname : req.body.lastname,
-		mobilephone : req.body.phone,
+		mobilephone : req.body.mobilephone,
 		date_created: new Date(),
 		devices: device_array,
 	}).save(function(err,object){
@@ -1068,7 +1068,7 @@ exports.getDeliveryItemByID = function(req,res){
 exports.getAllDeliveryItems = function(req,res){
 	//Esta función expone un servicio para buscar todos los DeliveryItems sin ningún criterio de búsqueda
 	//Pendiente filtrado y límite
-	DeliveryItems.find({},exclude,function(err,objects){
+	DeliveryItem.find({},exclude,function(err,objects){
 		if(err){
 			res.json({status: false, error: "not found"});
 		}
@@ -1125,7 +1125,7 @@ exports.getNearDeliveryItems = function(req,res){
 exports.getByOverallStatus = function(req,res){
 	//Esta función expone un servicio para buscar todos los DeliveryItems con overall_status seleccionado
 	//Pendiente límite
-	DeliveryItems.find({overall_status:req.params.overall_status},exclude,function(err,objects){
+	DeliveryItem.find({overall_status:req.params.overall_status},exclude,function(err,objects){
 		if(err){
 			res.json({status: false, error: "not found"});
 		}
