@@ -746,11 +746,11 @@ exports.authenticateMessenger = function(req,res){
 //Además de esto, si el usuario está en la versión móvil, nos permite capturar información 
 //importante sobre su dispositivo
 
-/*Log*/utils.log("User/Authenticate","Recibo:",JSON.stringify(req.body));
+/*Log*/utils.log("Messenger/Login","Recibo:",JSON.stringify(req.body));
 
 	//Buscamos inicialmente que la cuenta del usuario exista
 	Messenger.findOne({email:req.body.email},exclude,function(err,messenger){
-		if(!user){
+		if(!messenger){
 			//No existe
 			res.json({status: false, error: "not found", error_id:0});
 		}
@@ -1358,7 +1358,7 @@ exports.nextStatus = function(req,res){
 						   	utils.log("DeliveryItem/Deliver","Envío:",JSON.stringify(object));
 								res.json({
 											status:true, 
-											message:"DeliveryItem ahora está finished.", 
+											message:"DeliveryItem ahora está returned.", 
 											response:result
 										});
 							});
@@ -1381,7 +1381,7 @@ exports.nextStatus = function(req,res){
 									});
 						});
 					}
-				   	res.json({status:true, message:"DeliveryItem ahora está in-transit.", response:object});
+				   	//res.json({status:true, message:"DeliveryItem ahora está in-transit.", response:object});
 			   	}
 		   	}
 	});
