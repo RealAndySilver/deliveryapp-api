@@ -489,7 +489,7 @@ var filtered_body = utils.remove_empty(req.body);
 		//Seteamos el nuevo contenido
 	   {$set:filtered_body}, 
 	   	function(err,object){
-	   	if(!user){
+	   	if(!object){
 		   	res.json({status: false, error: "not found"});
 	   	}
 	   	else{
