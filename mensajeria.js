@@ -132,8 +132,8 @@ app.put('/api_1.0/Messenger/Invite', model.messengerInvite);
 app.post('/api_1.0/DeliveryItem/Create', model.createDelivery);
 //DeliveryItem Read APIs
 app.get('/api_1.0/DeliveryItem/:delivery_id', model.getDeliveryItemByID);
-app.get('/api_1.0/DeliveryItems/Near/:lat/:lon/:maxDistance', model.getNearDeliveryItems);
-app.get('/api_1.0/DeliveryItems', model.getAllDeliveryItems);
+app.get('/api_1.0/DeliveryItems/Near/:lat/:lon/:maxDistance/:sort?', model.getNearDeliveryItems);
+app.get('/api_1.0/DeliveryItems/:sort?', model.getAllDeliveryItems);
 app.get('/api_1.0/DeliveryItems/OverallStatus/:overall_status', model.getByOverallStatus);
 //DeliveryItem Update APIs
 app.put('/api_1.0/DeliveryItem/AddPic/:delivery_id', model.addPicToDeliveryItem);

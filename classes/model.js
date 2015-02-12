@@ -1068,7 +1068,15 @@ exports.getDeliveryItemByID = function(req,res){
 exports.getAllDeliveryItems = function(req,res){
 	//Esta función expone un servicio para buscar todos los DeliveryItems sin ningún criterio de búsqueda
 	//Pendiente filtrado y límite
-	DeliveryItem.find({},exclude,function(err,objects){
+	var sort = {};
+	if(req.params.sort){
+		sort = utils.isJson(req.params.sort) ? JSON.parse(req.params.sort):req.params.sort;
+	}
+	DeliveryItem.find({})
+	.sort(sort.name)
+	.skip(sort.skip)
+	.limit(sort.limit)
+	.execFind(function(err,objects){
 		if(err){
 			res.json({status: false, error: "not found"});
 		}
@@ -1104,10 +1112,16 @@ exports.getNearDeliveryItems = function(req,res){
 	}
 		console.log("query: "+JSON.stringify(query));
 
+	var sort = {};
+	if(req.params.sort){
+		sort = utils.isJson(req.params.sort) ? JSON.parse(req.params.sort):req.params.sort;
+	}
 	utils.log("DeliveryItem/Near/"+req.params.lat+"/"+req.params.lon+"/"+ req.params.maxDistance,"Recibo:","GET");
-	DeliveryItem.find(query,
-		exclude,
-		function(err,objects){
+	DeliveryItem.find(query)
+	.sort(sort.name)
+	.skip(sort.skip)
+	.limit(sort.limit)
+	.execFind(function(err,objects){
 		if(!err){
 			if(objects.length<=0){
 				res.json({status: false, error: "not found"});
@@ -1294,7 +1308,7 @@ exports.nextStatus = function(req,res){
 	//de manera automática
 	utils.log("DeliveryItem/NextStatus/"+req.params.delivery_id,"Recibo:",JSON.stringify(req.body));
 	//Verificamos que llegue el objeto mensajero con un id
-	if(req.body.messenger_info._id){
+	if(req.body.messenger_info){
 		req.body.messenger_info = utils.isJson(req.body.messenger_info) ? 
 										JSON.parse(req.body.messenger_info): 
 										req.body.messenger_info ;
