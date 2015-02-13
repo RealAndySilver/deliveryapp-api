@@ -1525,14 +1525,13 @@ exports.abortDeliveryItem = function(req,res){
 //Delete
 exports.deleteDeliveryItem = function(req,res){
 	utils.log("DeliveryItem/Delete/"+req.params.delivery_id,"Recibo:",JSON.stringify(req.body));
-	
-	DeliveryItem.findOne({_id:req.params.delivery_id,user_id:req.body.user_id},exclude,function(err,object){
+	DeliveryItem.findOne({_id:req.params.delivery_id,user_id:req.params.user_id},exclude,function(err,object){
 		if(!object){
 			res.json({status: false, error: "not found"});
 		}
 		else{
 			if(object.status == "available"){
-				DeliveryItem.remove({_id:req.params.delivery_id,user_id:req.body.user_id},
+				DeliveryItem.remove({_id:req.params.delivery_id,user_id:req.params.user_id},
 				function(err){
 					if(err){
 						res.json({status: false, error: "No se pudo borrar ya que no se encontró el item"});
@@ -1543,7 +1542,7 @@ exports.deleteDeliveryItem = function(req,res){
 				});
 			}
 			else if(object.status == "accepted"){
-				DeliveryItem.remove({_id:req.params.delivery_id,user_id:req.body.user_id},
+				DeliveryItem.remove({_id:req.params.delivery_id,user_id:req.params.user_id},
 				function(err){
 					if(err){
 						res.json({status: false, error: "No se pudo borrar ya que no se encontró el item"});
