@@ -132,9 +132,11 @@ app.put('/api_1.0/Messenger/Invite', model.messengerInvite);
 app.post('/api_1.0/DeliveryItem/Create', model.createDelivery);
 //DeliveryItem Read APIs
 app.get('/api_1.0/DeliveryItem/:delivery_id', model.getDeliveryItemByID);
+app.get('/api_1.0/DeliveryItem/UserActive/:user_id/:sort?', model.getUserActive);
+app.get('/api_1.0/DeliveryItem/UserFinished/:user_id/:sort?', model.getUserFinished);
 app.get('/api_1.0/DeliveryItems/Near/:lat/:lon/:maxDistance/:sort?', model.getNearDeliveryItems);
 app.get('/api_1.0/DeliveryItems/:sort?', model.getAllDeliveryItems);
-app.get('/api_1.0/DeliveryItems/OverallStatus/:overall_status', model.getByOverallStatus);
+app.get('/api_1.0/DeliveryItems/OverallStatus/:overall_status/:messenger_id/:sort?', model.getByOverallStatus);
 //DeliveryItem Update APIs
 app.put('/api_1.0/DeliveryItem/AddPic/:delivery_id', model.addPicToDeliveryItem);
 //DeliveryItem Messenger Only Update APIs

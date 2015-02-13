@@ -706,6 +706,7 @@ utils.log("Messenger","Recibo:",JSON.stringify(req.body));
 		devices: device_array,
 	}).save(function(err,object){
 		if(err){
+			console.log("error: "+err);
 			res.json(err);
 		}
 		else{
@@ -1106,6 +1107,7 @@ exports.getNearDeliveryItems = function(req,res){
 						$maxDistance:meters
 					}
 				};	
+		query.overall_status = "requested";
 	}
 	else{
 		res.json({status: false, error: "Faltan datos para la búsqueda"});
@@ -1139,7 +1141,55 @@ exports.getNearDeliveryItems = function(req,res){
 exports.getByOverallStatus = function(req,res){
 	//Esta función expone un servicio para buscar todos los DeliveryItems con overall_status seleccionado
 	//Pendiente límite
-	DeliveryItem.find({overall_status:req.params.overall_status},exclude,function(err,objects){
+	var sort = {};
+	if(req.params.sort){
+		sort = utils.isJson(req.params.sort) ? JSON.parse(req.params.sort):req.params.sort;
+	}
+	DeliveryItem.find({messenger_id:req.params.messenger_id, overall_status:req.params.overall_status},exclude)
+	.sort(sort.name)
+	.skip(sort.skip)
+	.limit(sort.limit)
+	.execFind(function(err,objects){
+		if(err){
+			res.json({status: false, error: "not found"});
+		}
+		else{
+			res.json({status: true, response: objects});
+		}
+	});
+};
+exports.getUserActive = function(req,res){
+	//Esta función expone un servicio para buscar todos los DeliveryItems sin ningún criterio de búsqueda
+	//Pendiente filtrado y límite
+	var sort = {};
+	if(req.params.sort){
+		sort = utils.isJson(req.params.sort) ? JSON.parse(req.params.sort):req.params.sort;
+	}
+	DeliveryItem.find({user_id:req.params.user_id, $or:[{overall_status:'requested'},{overall_status:'started'}]})
+	.sort(sort.name)
+	.skip(sort.skip)
+	.limit(sort.limit)
+	.execFind(function(err,objects){
+		if(err){
+			res.json({status: false, error: "not found"});
+		}
+		else{
+			res.json({status: true, response: objects});
+		}
+	});
+};
+exports.getUserFinished = function(req,res){
+	//Esta función expone un servicio para buscar todos los DeliveryItems sin ningún criterio de búsqueda
+	//Pendiente filtrado y límite
+	var sort = {};
+	if(req.params.sort){
+		sort = utils.isJson(req.params.sort) ? JSON.parse(req.params.sort):req.params.sort;
+	}
+	DeliveryItem.find({user_id:req.params.user_id, overall_status:'finished'})
+	.sort(sort.name)
+	.skip(sort.skip)
+	.limit(sort.limit)
+	.execFind(function(err,objects){
 		if(err){
 			res.json({status: false, error: "not found"});
 		}
@@ -1326,24 +1376,39 @@ exports.nextStatus = function(req,res){
 			   	res.json({status: false, error: "No se encontró el DeliveryItem"});
 		   	}
 		   	else{
+			   	//Este caso es cuando el usuario crea el pedido y este aún no ha sido aceptado
+			   	//Por ningún mensajero
 			   	if(object.status == "available"){
+				   	//Este es el primer caso para la aceptación del servicio
+				   	//El objeto delivery tendrá ahora el id del mensajero
+				   	//y el objeto mensajero en su totalidad para ser mostrado
+				   	//en la aplicación de usuario
 					object.messenger_id = req.body.messenger_info._id;
 			   		object.messenger_info = req.body.messenger_info;
+			   		//También modificamos el estado del pedido para que este no sea
+			   		//mostrado como disponible a otros mensajeros
 			   		object.status = "accepted";
 			   		object.overall_status = "started";
+			   		//Procedemos a guardar con los datos modificados
 					object.save(function(err, result){
-						utils.log("DeliveryItem/Accept","Envío:",JSON.stringify(object));
-						res.json({status:true, message:"DeliveryItem aceptado exitosamente.", response:object});
+						utils.log("DeliveryItem/Accept","Envío:",JSON.stringify(result));
+						res.json({status:true, message:"DeliveryItem aceptado exitosamente.", response:result});
 					});
 					return;
 			   	}
+			   	//Este caso es cuando el mensajero ya aceptó el servicio 
+			   	//y se encuentra en camino para recogerlo
 			   	else if (object.status == "accepted"){
+				   	//También modificamos el estado del pedido para que este no sea
+			   		//mostrado como disponible a otros mensajeros
 				   	object.status = "in-transit";
 				   	object.save(function(err, result){
 				   		utils.log("DeliveryItem/InTransit","Envío:",JSON.stringify(object));
 				   		res.json({status:true, message:"DeliveryItem ahora está in-transit.", response:object});					});
 					return;
 			   	}
+			   	//Los siguientes casos son posteriores a los casos anteriores
+			   	//Y dependen de la variable roundtrip para crear un nuevo status siguiente
 				else{
 				   	//Verificamos que roundtrip sea positivo
 				   	//Este caso indica que el item después de entregado debe regresar
@@ -1460,20 +1525,38 @@ exports.abortDeliveryItem = function(req,res){
 //Delete
 exports.deleteDeliveryItem = function(req,res){
 	utils.log("DeliveryItem/Delete/"+req.params.delivery_id,"Recibo:",JSON.stringify(req.body));
-	DeliveryItem.remove({
-						_id:req.params.delivery_id, 
-						user_id:req.body.user_id,
-						status: "available",
-						overall_status: "requested"
-					},
-	function(err){
-			if(err){
-				res.json({status: false, error: "No se pudo borrar ya que no se encontró el item"});
+	
+	DeliveryItem.findOne({_id:req.params.delivery_id,user_id:req.body.user_id},exclude,function(err,object){
+		if(!object){
+			res.json({status: false, error: "not found"});
+		}
+		else{
+			if(object.status == "available"){
+				DeliveryItem.remove({_id:req.params.delivery_id,user_id:req.body.user_id},
+				function(err){
+					if(err){
+						res.json({status: false, error: "No se pudo borrar ya que no se encontró el item"});
+					}
+					else{
+						res.json({status:true, message:"DeliveryItem en estado available borrado exitosamente."});
+					}
+				});
 			}
-			else{
-				res.json({status:true, message:"DeliveryItem borrado exitosamente."});
+			else if(object.status == "accepted"){
+				DeliveryItem.remove({_id:req.params.delivery_id,user_id:req.body.user_id},
+				function(err){
+					if(err){
+						res.json({status: false, error: "No se pudo borrar ya que no se encontró el item"});
+					}
+					else{
+						//En este punto se le debe alertar al motorizado que el servicio fue cancelado
+						res.json({status:true, message:"DeliveryItem en estado accepted borrado exitosamente."});
+					}
+				});
 			}
+		}
 	});
+	
 };
 //////////////////////////////////////
 //End of Messenger CRUD////////////////////
