@@ -145,6 +145,7 @@ app.put('/api_1.0/DeliveryItem/InTransit/:delivery_id', model.inTransitDeliveryI
 app.put('/api_1.0/DeliveryItem/Deliver/:delivery_id', model.deliverDeliveryItem);
 //Experiment
 app.put('/api_1.0/DeliveryItem/NextStatus/:delivery_id', model.nextStatus);
+app.put('/api_1.0/DeliveryItem/LastStatus/:delivery_id', model.lastStatus);
 ////////////
 app.put('/api_1.0/DeliveryItem/Abort/:delivery_id', model.abortDeliveryItem);
 //DeliveryItem Delete APIs

@@ -76,6 +76,7 @@ var UserSchema= new mongoose.Schema({
 	name : {type: String, required:true},
 	lastname : {type: String, required:true},
 	mobilephone: {type: Number, required: true},
+	city: {type: String, required: false},
 	device : {type: [Device], required:false},
 	favorites : {type: Array, required:false},
 }),
@@ -96,6 +97,7 @@ var MessengerSchema= new mongoose.Schema({
 	lastname : {type: String, required:false},
 	mobilephone : {type: String, required:true},
 	identification : {type: String, required:false},
+	city : {type: String, required:false},
 	plate : {type: String, required:false},
 	device : {type: [Device], required:false},
 	favorites : {type: Array, required:false},
@@ -280,6 +282,7 @@ exports.createUser = function(req,res){
 		name : req.body.name,
 		lastname : req.body.lastname,
 		mobilephone : req.body.mobilephone,
+		city : req.body.city,
 		date_created: new Date(),
 		devices: device_array,
 	}).save(function(err,object){
@@ -701,6 +704,7 @@ utils.log("Messenger","Recibo:",JSON.stringify(req.body));
 		lastname : req.body.lastname,
 		mobilephone : req.body.mobilephone,
 		identification: req.body.identification,
+		city :  req.body.city,
 		plate: req.body.plate,
 		date_created: new Date(),
 		devices: device_array,
@@ -1461,6 +1465,114 @@ exports.nextStatus = function(req,res){
 						});
 					}
 				   	//res.json({status:true, message:"DeliveryItem ahora está in-transit.", response:object});
+			   	}
+		   	}
+	});
+};
+exports.lastStatus = function(req,res){
+	//Este método identifica el estado del pedido y lo regresa al estado anterior
+	//de manera automática
+	utils.log("DeliveryItem/LastStatus/"+req.params.delivery_id,"Recibo:",JSON.stringify(req.body));
+	//Verificamos que llegue el objeto mensajero con un id
+	if(req.body.messenger_info){
+		req.body.messenger_info = utils.isJson(req.body.messenger_info) ? 
+										JSON.parse(req.body.messenger_info): 
+										req.body.messenger_info ;
+	}
+	else{
+		res.json({status: false, error: "No se encontró el objeto mensajero"});
+		return;
+	}
+	//Procedemos a actualizar el DeliveryItem
+	//Este debe tener condicion de overall_status: started y 
+	//el id correcto del delivery y el mensajero
+	DeliveryItem.findOne({_id:req.params.delivery_id}, 
+	   function(err,object){
+		   	if(!object){
+			   	res.json({status: false, error: "No se encontró el DeliveryItem"});
+		   	}
+		   	else{
+			   	//En este caso, el mensajero no tendrá acceso al deliveryitem y no podrá 
+			   	//regresar el status.. es imposible
+			   	if(object.status == "available"){
+					res.json({status:false, message:"No se puede regresar en estado available"});
+					return;
+			   	}
+			   	//En este caso, el mensajero tendrá acceso al deliveryitem pero no podrá 
+			   	//regresar el status. Para regresar este status es necesario usar el servicio
+			   	//de Abort
+			   	else if (object.status == "accepted"){
+				   	res.json({status:false, message:"No se puede regresar en estado accepted, usar el servicio Abort"});
+			   	}
+			   	//Los siguientes casos son posteriores a los casos anteriores
+			   	//Y dependen de la variable roundtrip para crear un nuevo status siguiente
+				else{
+				   	//Verificamos que roundtrip sea positivo
+				   	//Este caso indica que el item después de entregado debe regresar
+				   	//al punto de partida
+					if(object.roundtrip){
+						//Si el item se encuentra en tránsito debemos setearlo como
+						//returning
+						if(object.status = "in-transit"){
+							object.status = "accepted";
+							object.save(function(err, result){
+								res.json({
+											status:true, 
+											message:"DeliveryItem ahora está accepted.", 
+											response:result
+										});
+							});
+						}
+						//Si el item se encuentra en returning debemos setearlo como
+						//in-transit
+						else if(object.status = "returning"){
+							object.status = "in-transit";
+							object.save(function(err, result){
+								res.json({
+											status:true, 
+											message:"DeliveryItem ahora está in-transit.", 
+											response:result
+										});
+							});
+						}
+						else if(object.status = "returned"){
+							object.status = "returning";
+							object.overall_status = "started"
+							object.save(function(err, result){
+								res.json({
+											status:true, 
+											message:"DeliveryItem ahora está in-transit.", 
+											response:result
+										});
+							});
+						}
+					}
+					//Este caso indica que el item después de entregado NO debe regresar
+				   	//al punto de partida
+					else{
+						if(object.status == "in-transit"){
+							object.status = "accepted";
+							object.save(function(err, result){
+									res.json({
+									status:true, 
+									message:"DeliveryItem ahora está accepted.", 
+									response:result
+								});
+							});
+						}
+						else if(object.status == "delivered"){
+							object.status = "in-transit";
+							object.overall_status = "started";
+							object.save(function(err, result){
+									res.json({
+									status:true, 
+									message:"DeliveryItem ahora está in-transit.", 
+									response:result
+								});
+							});
+						}
+						
+					}
 			   	}
 		   	}
 	});
