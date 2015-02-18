@@ -1420,10 +1420,11 @@ exports.nextStatus = function(req,res){
 					if(object.roundtrip){
 						//Si el item se encuentra en tránsito debemos setearlo como
 						//returning
-						if(object.status = "in-transit"){
+						
+						if(object.status == "in-transit"){
 							object.status = "returning";
 							object.save(function(err, result){
-						   	utils.log("DeliveryItem/Deliver","Envío:",JSON.stringify(object));
+						   	utils.log("DeliveryItem/Returning","Envío:",JSON.stringify(object));
 								res.json({
 											status:true, 
 											message:"DeliveryItem ahora está returning.", 
@@ -1438,7 +1439,7 @@ exports.nextStatus = function(req,res){
 							object.status = "returned";
 							object.overall_status = "finished";
 							object.save(function(err, result){
-						   	utils.log("DeliveryItem/Deliver","Envío:",JSON.stringify(object));
+						   	utils.log("DeliveryItem/Returned","Envío:",JSON.stringify(object));
 								res.json({
 											status:true, 
 											message:"DeliveryItem ahora está returned.", 
@@ -1513,7 +1514,7 @@ exports.lastStatus = function(req,res){
 					if(object.roundtrip){
 						//Si el item se encuentra en tránsito debemos setearlo como
 						//returning
-						if(object.status = "in-transit"){
+						if(object.status == "in-transit"){
 							object.status = "accepted";
 							object.save(function(err, result){
 								res.json({
@@ -1525,7 +1526,7 @@ exports.lastStatus = function(req,res){
 						}
 						//Si el item se encuentra en returning debemos setearlo como
 						//in-transit
-						else if(object.status = "returning"){
+						else if(object.status == "returning"){
 							object.status = "in-transit";
 							object.save(function(err, result){
 								res.json({
@@ -1535,7 +1536,7 @@ exports.lastStatus = function(req,res){
 										});
 							});
 						}
-						else if(object.status = "returned"){
+						else if(object.status == "returned"){
 							object.status = "returning";
 							object.overall_status = "started"
 							object.save(function(err, result){
