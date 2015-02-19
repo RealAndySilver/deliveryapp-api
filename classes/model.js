@@ -116,6 +116,7 @@ var DeliveryItemSchema= new mongoose.Schema({
 	messenger_id: {type: String, required:false},
 	messenger_info: {type: Object, required:false},
 	messenger_comments: {type: String, required:false},
+	item_name : {type: String, required:false},
 	pickup_location : {type: {type: String}, 'coordinates':{type:[Number]}},
 	pickup_object: {type: Object, required:true},
 	delivery_location : {type: {type: String}, 'coordinates':{type:[Number]}},	
@@ -1034,6 +1035,7 @@ utils.log("Delivery","Recibo:",JSON.stringify(req.body));
 	new DeliveryItem({
 		user_id : req.body.user_id,
 		user_info: req.body.user_info,
+		item_name: req.body.item_name,
 		pickup_location : pickup_location,
 		pickup_object: req.body.pickup_object,
 		delivery_location : delivery_location,	
