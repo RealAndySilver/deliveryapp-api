@@ -17,7 +17,8 @@
     "node-gcm": "*",
     "bcrypt" : "0.8.0",
     "colors" : "*",
-    "nodemon": "*"
+    "nodemon": "*",
+    "google-distance" : "*"
   },
   "devDependencies": {},
   "subdomain": "iccknet-EventosCaracol",

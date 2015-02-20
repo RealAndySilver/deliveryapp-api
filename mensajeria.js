@@ -155,6 +155,8 @@ app.delete('/api_1.0/DeliveryItem/Delete/:delivery_id/:user_id', model.deleteDel
 ///////////////////////////////////////////////////////////////////
 
 
+app.get('/api_1.0/GetPrice/:loc1/:loc2', model.getPrice);
+
 //Create APIs
 app.post('/api_1.0/CreateAdmin', model.createAdmin);
 

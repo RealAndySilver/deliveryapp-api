@@ -13,6 +13,7 @@ var knox = require('knox');
 var gcm = require('node-gcm');
 var	security = require('../classes/security');
 var colors = require('colors');
+var distance = require('google-distance');
 //////////////////////////////////
 //End of Dependencies/////////////
 //////////////////////////////////
@@ -2066,6 +2067,54 @@ var emailVerification = function (req,data,type){
 	//Formamos una url decifrable únicamente por nuestro sistema para poder verificar la autenticidad
 	var url = 'http://'+hostname+'/api_1.0/Account/Verify/'+type+'/'+emailB64+'/'+tokenB64;
 				mail.send("Verifica tu cuenta", mail_template.email_verification(data,url), data.email);
+};
+exports.getPrice = function (req,res){
+	distance.get(
+	{
+	  index: 1,
+	  origin: req.params.loc1,
+	  destination: req.params.loc2,
+	  mode: 'driving',
+	  language: 'es',
+	},
+	function(err, data) {
+		if (err){
+			return console.log(err);
+		}
+		else{
+			var message = "Valor a pagar aproximado: $";
+			var result = data.distanceValue/1000 *1000;
+			var parsedOrigin = data.origin.split(",");
+			var parsedDestination = data.destination.split(",");
+			if(parsedOrigin[1] == parsedDestination[1]){
+				if(result<5000){
+				result = 5000;
+				}
+				res.json(
+					{
+						status: true, 
+						message: message+result, 
+						value:result, 
+						duration:data.duration, 
+						durationValue:data.durationValue,
+						//data:data, 
+						originCity:parsedOrigin, 
+						destinationCity:parsedDestination
+					}
+				);
+			}
+			else{
+				res.json(
+					{
+						status: false, 
+						message: "La ciudad de origen es distinta a la ciudad de destino. La tarifa debe ser consultada con el mensajero",  
+						origin:parsedOrigin[1], 
+						destination:parsedDestination[1]
+					}
+				);
+			}
+		}
+	});
 };
 /////////////////////////////////
 //End of Functions///////////////
