@@ -2079,7 +2079,13 @@ exports.getPrice = function (req,res){
 	},
 	function(err, data) {
 		if (err){
-			return console.log(err);
+			res.json(
+					{
+						status: false, 
+						message: "Ocurrió un error a la hora de hacer el cálculo",  
+						error:err, 
+					}
+				);
 		}
 		else{
 			var message = "Valor a pagar aproximado: $";
