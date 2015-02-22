@@ -102,6 +102,9 @@ var MessengerSchema= new mongoose.Schema({
 	plate : {type: String, required:false},
 	device : {type: [Device], required:false},
 	favorites : {type: Array, required:false},
+	total_reviews : {type: Number, required:false},
+	total_rating : {type: Number, required:false},
+	rating_average : {type: Number, required:false},
 });
 	Messenger= mongoose.model('Messenger',MessengerSchema);
 //////////////////////////////////
@@ -132,6 +135,8 @@ var DeliveryItemSchema= new mongoose.Schema({
 	status : {type: String, required:true}, //available, accepted, in-transit, delivered, returning, returned, aborted
 	pickup_time : {type: Date, required:false},
 	image: {type: Object, required:false},
+	rated : {type: Boolean, required:false},
+	rate_object : {type: Object, required:false},
 });
 	DeliveryItemSchema.index({pickup_location:"2dsphere", required:false});
 	DeliveryItemSchema.index({delivery_location:"2dsphere", required:false});
@@ -1050,6 +1055,7 @@ utils.log("Delivery","Recibo:",JSON.stringify(req.body));
 		overall_status : "requested",
 		status : "available",
 		pickup_time : req.body.pickup_time,
+		rated : false,
 	}).save(function(err,object){
 		if(err){
 			res.json(err);
@@ -1359,6 +1365,37 @@ exports.deliverDeliveryItem = function(req,res){
 		   	}
 	});
 };
+//DeliveryItem User Only Update
+exports.rateDeliveryItem = function(req,res){
+	/*Log*/utils.log("DeliveryItem/Rate/"+req.params.delivery_id,"Recibo:",JSON.stringify(req.body));
+	DeliveryItem.findOne({_id:req.params.delivery_id, user_id: req.body.user_id, overall_status: "finished"},exclude,function(err,object){
+		if(!object){
+			res.json({status: false, error: "not found"});
+		}
+		else{
+			if(!object.rated){
+				object.rate_object = {};
+				object.rate_object.rating = req.body.rating;
+				object.rate_object.review = req.body.review;
+				object.rated = false;
+				object.save(function(err,result){
+					Messenger.findOneAndUpdate({_id:"54e7581a726deb8a79000001"},{$inc:{total_reviews:1, total_rating:object.rate_object.rating}},function(err, messenger){
+						if(messenger){
+							messenger.rating_average = (messenger.total_rating / messenger.total_reviews).toFixed(1);
+							messenger.save(function(err, result){
+								/*Log*/utils.log("DeliveryItem/Rate/"+req.params.delivery_id,"Envio:",JSON.stringify(messenger));	
+							res.json({status: true, message: 'Envío calificado exitosamente', response:object, messenger_average_rating: messenger.rating_average});
+							});	
+						}
+					});
+				});
+			}
+			else{
+				res.json({status: false, message: 'Este envío ya fue calificado', response:object});
+			}
+		}
+	});
+};
 //Experiment
 exports.nextStatus = function(req,res){
 	//Este método identifica el estado del pedido y continúa con el estado siguiente
@@ -1608,7 +1645,7 @@ exports.abortDeliveryItem = function(req,res){
 			   	res.json({status: false, error: "No se encontró el DeliveryItem"});
 		   	}
 		   	else{
-			   	if(object.status = "accepted"){
+			   	if(object.status == "accepted"){
 					object.status = "available";
 					object.overall_status = "requested";
 					object.messenger_info = {};
@@ -1623,7 +1660,7 @@ exports.abortDeliveryItem = function(req,res){
 					});
 				}
 				else{
-					object.status = "aborted";
+					object.status == "aborted";
 					object.overall_status = "aborted";
 					object.messenger_info.abort_reason = req.body.messenger_info.abort_reason;
 					object.save(function(err, result){
