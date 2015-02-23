@@ -87,7 +87,7 @@ app.delete('/api_1.0/User/:user_id', model.deleteUser);
 //Change Password
 app.put('/api_1.0/User/Password/:user_id', model.changePasswordUser);
 //User Recover Password
-app.get('/api_1.0/User/Recover/:email', model.requestRecoverUser);
+app.get('/api_1.0/User/Recover/:user_email', model.requestRecoverUser);
 app.put('/api_1.0/User/NewPassword/:token', model.newPasswordUser);
 //Invite
 app.put('/api_1.0/User/Invite', model.userInvite);
@@ -134,6 +134,7 @@ app.post('/api_1.0/DeliveryItem/Create', model.createDelivery);
 app.get('/api_1.0/DeliveryItem/:delivery_id', model.getDeliveryItemByID);
 app.get('/api_1.0/DeliveryItem/UserActive/:user_id/:sort?', model.getUserActive);
 app.get('/api_1.0/DeliveryItem/UserFinished/:user_id/:sort?', model.getUserFinished);
+app.get('/api_1.0/DeliveryItem/Aborted/:user_id/:sort?', model.getUserAborted);
 app.get('/api_1.0/DeliveryItems/Near/:lat/:lon/:maxDistance/:sort?', model.getNearDeliveryItems);
 app.get('/api_1.0/DeliveryItems/:sort?', model.getAllDeliveryItems);
 app.get('/api_1.0/DeliveryItems/OverallStatus/:overall_status/:messenger_id/:sort?', model.getByOverallStatus);

@@ -33,10 +33,10 @@ var exclude = {/*password:*/};
 var verifyEmailVar = true;
 
 //Producción
-var hostname = "192.241.187.135:2000";
+//var hostname = "192.241.187.135:2000";
 var webapp = "192.241.187.135:3000"
 //Dev
-//var hostname = "192.168.0.40:2000";
+var hostname = "192.168.0.40:2000";
 //var webapp = "192.241.187.135:3000";
 
 //////////////////////////////////
@@ -1211,6 +1211,27 @@ exports.getUserFinished = function(req,res){
 		}
 	});
 };
+exports.getUserAborted = function(req,res){
+	//Esta función expone un servicio para buscar todos los DeliveryItems Abortados sin ningún criterio de búsqueda
+	//Pendiente filtrado y límite
+	var sort = {};
+	if(req.params.sort){
+		sort = utils.isJson(req.params.sort) ? JSON.parse(req.params.sort):req.params.sort;
+	}
+	DeliveryItem.find({user_id:req.params.user_id, overall_status:'aborted'})
+	.sort(sort.name)
+	.skip(sort.skip)
+	.limit(sort.limit)
+	.execFind(function(err,objects){
+		if(err){
+			res.json({status: false, error: "not found"});
+		}
+		else{
+			res.json({status: true, response: objects});
+		}
+	});
+};
+
 //Update*
 exports.addPicToDeliveryItem = function(req,res){
 /*Log*/utils.log("DeliveryItem/AddPic/"+req.params.delivery_id,"Recibo:",JSON.stringify(req.body));
@@ -1379,7 +1400,7 @@ exports.rateDeliveryItem = function(req,res){
 				object.rate_object.review = req.body.review;
 				object.rated = true;
 				object.save(function(err,result){
-					Messenger.findOneAndUpdate({_id:"54e7581a726deb8a79000001"},{$inc:{total_reviews:1, total_rating:object.rate_object.rating}},function(err, messenger){
+					Messenger.findOneAndUpdate({_id:object.messenger_id},{$inc:{total_reviews:1, total_rating:object.rate_object.rating}},function(err, messenger){
 						if(messenger){
 							messenger.rating_average = (messenger.total_rating / messenger.total_reviews).toFixed(1);
 							messenger.save(function(err, result){
@@ -2177,7 +2198,7 @@ exports.passwordRedirect = function (req, res){
 	
 	if (/like Mac OS X/.test(ua)) {
 		console.log("Caso MACOSX");
-	    res.redirect('doclinea://password_redirect?token='+req.params.token+'&type='+req.params.type+'&request='+req.params.request+'&email='+req.params.email);
+	    res.redirect('mensajeria://password_redirect?token='+req.params.token+'&type='+req.params.type+'&request='+req.params.request+'&email='+req.params.email);
 	}
 	
 	if (/Android/.test(ua)){
