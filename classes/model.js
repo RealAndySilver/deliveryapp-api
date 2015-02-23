@@ -36,8 +36,8 @@ var verifyEmailVar = true;
 var hostname = "192.241.187.135:2000";
 var webapp = "192.241.187.135:3000"
 //Dev
-//var hostname = "192.168.0.37:1414";
-//var webapp = "192.241.187.135:3000"
+//var hostname = "192.168.0.40:2000";
+//var webapp = "192.241.187.135:3000";
 
 //////////////////////////////////
 //End of Global Vars//////////////
@@ -569,7 +569,7 @@ exports.changePasswordUser = function(req,res){
 		}
 		else{
 			//Verificamos que el hash guardado en password sea igual al password de entrada
-			if(security.compareHash(req.body.password, user.password)){
+			if(security.compareHash(req.body.password, object.password)){
 				//Acá se verifica si llega device info, y se agrega al device list del usuario
 				//En este punto ya se encuentra autenticado el usuario, las respuestas siempre serán positivas
 				object.password = security.encrypt(req.body.new_password);
@@ -1377,7 +1377,7 @@ exports.rateDeliveryItem = function(req,res){
 				object.rate_object = {};
 				object.rate_object.rating = req.body.rating;
 				object.rate_object.review = req.body.review;
-				object.rated = false;
+				object.rated = true;
 				object.save(function(err,result){
 					Messenger.findOneAndUpdate({_id:"54e7581a726deb8a79000001"},{$inc:{total_reviews:1, total_rating:object.rate_object.rating}},function(err, messenger){
 						if(messenger){
