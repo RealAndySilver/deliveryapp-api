@@ -80,6 +80,7 @@ var UserSchema= new mongoose.Schema({
 	city: {type: String, required: false},
 	device : {type: [Device], required:false},
 	favorites : {type: Array, required:false},
+	stats : {type: Object, required:false},
 }),
 	User= mongoose.model('User',UserSchema);
 //////////////////////////////////
@@ -105,6 +106,7 @@ var MessengerSchema= new mongoose.Schema({
 	total_reviews : {type: Number, required:false},
 	total_rating : {type: Number, required:false},
 	rating_average : {type: Number, required:false},
+	stats : {type: Object, required:false},
 });
 	Messenger= mongoose.model('Messenger',MessengerSchema);
 //////////////////////////////////
@@ -545,7 +547,7 @@ exports.newPasswordUser = function(req,res){
 		else{
 			object.password_recover.status = false;
 			object.password_recover.token = "";
-			object.password = req.body.password;
+			object.password = security.encrypt(req.body.password);
 			object.save(function(err, result){
 				if(err){
 					
@@ -933,7 +935,7 @@ exports.newPasswordMessenger = function(req,res){
 		else{
 			object.password_recover.status = false;
 			object.password_recover.token = "";
-			object.password = req.body.password;
+			object.password = security.encrypt(req.body.new_password);
 			object.save(function(err, result){
 				if(err){
 					
@@ -1056,13 +1058,16 @@ utils.log("Delivery","Recibo:",JSON.stringify(req.body));
 		status : "available",
 		pickup_time : req.body.pickup_time,
 		rated : false,
+		stats : {},
 	}).save(function(err,object){
 		if(err){
 			res.json(err);
 		}
 		else{
-			utils.log("Messenger","Envío:",JSON.stringify(object));
-			res.json({status: true, message: "Pedido creado exitosamente.", response: object});
+			//utils.log("Messenger","Envío:",JSON.stringify(object));
+			User.findOneAndUpdate({_id:object.user_id},{$inc:{"stats.created_services":1}}, function(err, user){
+				res.json({status: true, message: "Pedido creado exitosamente.", response: object});
+			});
 		}
 	});
 };

@@ -46,6 +46,7 @@ app.get('/*', function(req, res, next){
 //Middleware to encode password
 app.post('/api_1.0/User/Create', security.passwordEncrypt);
 app.post('/api_1.0/Messenger/Create', security.passwordEncrypt);
+//app.post('/api_1.0/User/NewPassword/*', security.passwordEncrypt);
 app.post('/api_1.0/User/NewPassword/*', security.passwordEncrypt);
 app.post('/api_1.0/Messenger/NewPassword/*', security.passwordEncrypt);
 
