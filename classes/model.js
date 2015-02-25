@@ -14,6 +14,8 @@ var gcm = require('node-gcm');
 var	security = require('../classes/security');
 var colors = require('colors');
 var distance = require('google-distance');
+var imageUtilities = require('../classes/uploader');
+
 //////////////////////////////////
 //End of Dependencies/////////////
 //////////////////////////////////
@@ -136,12 +138,10 @@ var DeliveryItemSchema= new mongoose.Schema({
 	overall_status : {type: String, required:true}, //requested,started, finished
 	status : {type: String, required:true}, //available, accepted, in-transit, delivered, returning, returned, aborted
 	pickup_time : {type: Date, required:false},
-	image: {type: Object, required:false},
+	images: {type: Array, required:false},
 	rated : {type: Boolean, required:false},
 	rate_object : {type: Object, required:false},
-});
-	DeliveryItemSchema.index({pickup_location:"2dsphere", required:false});
-	DeliveryItemSchema.index({delivery_location:"2dsphere", required:false});
+}),
 	DeliveryItem= mongoose.model('DeliveryItem',DeliveryItemSchema);
 //////////////////////////////////
 //End of Appointment  Schema//////
@@ -167,7 +167,8 @@ var ReviewSchema= new mongoose.Schema({
 var ImageSchema= new mongoose.Schema({
 	name:{type: String, required: false,unique: false,},
 	messenger_id: {type: String, required: false,unique: false,},
-	type:{type: String, required: false,unique: false,},
+	delivery_status:{type: String, required: false},
+	delivery_name:{type: String, required: false},
 	size:{type: Number, required:false, unique:false,},
 	url:{type: String, required: false,unique: false,},
 }),
@@ -177,13 +178,13 @@ var ImageSchema= new mongoose.Schema({
 //////////////////////////////////
 
 //Development AMAZON BUCKET
-/*
+
 var client = knox.createClient({
-    key: 'AKIAJ32JCWGUBJ3BWFVA'
-  , secret: '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'
-  , bucket: 'doclinea'
+    key: 'AKIAIERCR4POCARGBWHA'
+  , secret: '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'
+  , bucket: 'mensajeria'
 });
-*/
+
 
 //////////////////////////////////
 //Admin CRUD starts here//////////
@@ -439,7 +440,7 @@ exports.getAllUsers = function(req,res){
 exports.requestedDeliveries = function(req,res){
 	//Esta función expone un servicio para buscar los deliveries que el usuario haya iniciado, pero
 	//qué no hayan sido aceptados aún
-	Messenger.find({user_id:req.params.user_id, overall_status:"requested"},exclude,function(err,objects){
+	DeliveryItem.find({user_id:req.params.user_id, overall_status:"requested"},exclude,function(err,objects){
 		if(err){
 			res.json({status: false, error: "not found"});
 		}
@@ -451,7 +452,7 @@ exports.requestedDeliveries = function(req,res){
 exports.startedDeliveries = function(req,res){
 	//Esta función expone un servicio para buscar los deliveries que el usuario haya iniciado,
 	//y qué ya hayan sido aceptados, pero se encuentren en curso ó estado no finalizado
-	Messenger.find({user_id:req.params.user_id, overall_status:"started"},exclude,function(err,objects){
+	DeliveryItem.find({user_id:req.params.user_id, overall_status:"started"},exclude,function(err,objects){
 		if(err){
 			res.json({status: false, error: "not found"});
 		}
@@ -463,7 +464,7 @@ exports.startedDeliveries = function(req,res){
 exports.finishedDeliveries = function(req,res){
 	//Esta función expone un servicio para buscar los deliveries que el usuario haya iniciado,
 	//qué ya hayan sido aceptados, y qué también hayan sido finalizados
-	Messenger.find({user_id:req.params.user_id, overall_status:"finished"},exclude,function(err,objects){
+	DeliveryItem.find({user_id:req.params.user_id, overall_status:"finished"},exclude,function(err,objects){
 		if(err){
 			res.json({status: false, error: "not found"});
 		}
@@ -1009,7 +1010,7 @@ exports.messengerInvite = function(req,res){
 //////////////////////////////////////
 
 //////////////////////////////////
-//Delivery CRUD starts here//////////
+//Delivery CRUD starts here///////
 //////////////////////////////////
 //Create*
 exports.createDelivery = function(req,res){
@@ -1058,7 +1059,7 @@ utils.log("Delivery","Recibo:",JSON.stringify(req.body));
 		status : "available",
 		pickup_time : req.body.pickup_time,
 		rated : false,
-		stats : {},
+		images : [],
 	}).save(function(err,object){
 		if(err){
 			res.json(err);
@@ -1246,8 +1247,8 @@ exports.addPicToDeliveryItem = function(req,res){
 		}
 		else{
 			/*Log*/utils.log("DeliveryItem/AddPic/"+req.params.delivery_id,"Envio:",JSON.stringify(object));
-			uploadImage(req.files.image,object,"gallery", 'delivery');
-			res.json({status: true, response: 'update in progress, get doctor again to see results'})
+			uploadImage(req.files.image,object);
+			res.json({status: true, response: 'Actualización del deliveryItem en progreso..'})
 		}
 	});
 };
@@ -1280,7 +1281,12 @@ exports.acceptDeliveryItem = function(req,res){
 		   	}
 		   	else{
 		   		utils.log("DeliveryItem/Accept","Envío:",JSON.stringify(object));
-			   	res.json({status:true, message:"DeliveryItem aceptado exitosamente.", response:object});
+		   		Messenger.findOneAndUpdate({_id:req.body.messenger_info._id},
+		   									{$inc:{"stats.accepted_services":1}}, 
+		   									function(err, user){
+			   		res.json({status:true, message:"DeliveryItem aceptado exitosamente.", response:object});
+
+			   	});
 		   	}
 	});
 };
@@ -1462,7 +1468,16 @@ exports.nextStatus = function(req,res){
 			   		//Procedemos a guardar con los datos modificados
 					object.save(function(err, result){
 						utils.log("DeliveryItem/Accept","Envío:",JSON.stringify(result));
-						res.json({status:true, message:"DeliveryItem aceptado exitosamente.", response:result});
+						Messenger.findOneAndUpdate({_id:req.body.messenger_info._id},
+		   									{$inc:{"stats.started_services":1}}, 
+		   									function(err, user){
+		   									res.json({
+			   											status:true, 
+			   											message:"DeliveryItem aceptado exitosamente.",
+			   											response:result
+			   										});
+
+						});
 					});
 					return;
 			   	}
@@ -1474,6 +1489,7 @@ exports.nextStatus = function(req,res){
 				   	object.status = "in-transit";
 				   	object.save(function(err, result){
 				   		utils.log("DeliveryItem/InTransit","Envío:",JSON.stringify(object));
+				   		
 				   		res.json({status:true, message:"DeliveryItem ahora está in-transit.", response:object});					});
 					return;
 			   	}
@@ -1505,12 +1521,16 @@ exports.nextStatus = function(req,res){
 							object.status = "returned";
 							object.overall_status = "finished";
 							object.save(function(err, result){
-						   	utils.log("DeliveryItem/Returned","Envío:",JSON.stringify(object));
-								res.json({
-											status:true, 
-											message:"DeliveryItem ahora está returned.", 
-											response:result
-										});
+							   	utils.log("DeliveryItem/Returned","Envío:",JSON.stringify(object));
+							   	Messenger.findOneAndUpdate({_id:req.body.messenger_info._id},
+	   									{$inc:{"stats.finished_services":1}}, 
+	   									function(err, user){
+	   									res.json({
+												status:true, 
+												message:"DeliveryItem ahora está returned.", 
+												response:result
+											});
+		   						});
 							});
 						}
 					}
@@ -1523,12 +1543,16 @@ exports.nextStatus = function(req,res){
 						object.status = "delivered";
 						object.overall_status = "finished";
 						object.save(function(err, result){
-						utils.log("DeliveryItem/Delivered","Envío:",JSON.stringify(object));
-							res.json({
-										status:true, 
-										message:"DeliveryItem ahora está delivered.", 
-										response:result
-									});
+							utils.log("DeliveryItem/Delivered","Envío:",JSON.stringify(object));
+							Messenger.findOneAndUpdate({_id:req.body.messenger_info._id},
+	   									{$inc:{"stats.finished_services":1}}, 
+	   									function(err, user){
+		   									res.json({
+											status:true, 
+											message:"DeliveryItem ahora está delivered.", 
+											response:result
+										});
+	   						});
 						});
 					}
 				   	//res.json({status:true, message:"DeliveryItem ahora está in-transit.", response:object});
@@ -1975,16 +1999,13 @@ var ios = req.body.ios ? true:false;
 //End of Send Push Notification///
 //////////////////////////////////
 
-/////////////////////////////////
-//Functions//////////////////////
-/////////////////////////////////
+//////////////////////////////////
+//Functions///////////////////////
+//////////////////////////////////
 //Image Uploader*//
-var uploadImage = function(file,object,type,owner){
+var uploadImage = function(file,delivery_object){
 	//Verificamos que llegue archivo adjunto
 	if(!file){
-		object.profile_pic = {name:"", image_url: ""};
-		object.save(function(err,obj){
-		});
 		console.log('No hay archivo');
 		return;
 	} 
@@ -2012,8 +2033,7 @@ var uploadImage = function(file,object,type,owner){
 				//Si no hay error en el proceso de guardado local
 				//Procedemos a subir el archivo al bucket con una ruta definida coherentemente
 				//Esta ruta se genera con los parámetros de entrada de la función
-				console.log("Objeto: "+object.email);
-				var req = client.put(owner+'/'+object.email+'/'+type+"/"+file.name, {
+				var req = client.put(delivery_object.user_info.email+'/'+delivery_object.item_name+'/'+delivery_object.status+"/"+file.name, {
 					      'Content-Length': stat.size,
 					      'Content-Type': file.type,
 					      'x-amz-acl': 'public-read'
@@ -2027,46 +2047,25 @@ var uploadImage = function(file,object,type,owner){
 					new Image({
 						name:file.name,
 						url:req.url,
-						owner: owner,
-						owner_id: object._id,
-						type: type,
+						owner: delivery_object.user_info.email,
+						owner_id: delivery_object.user_id,
+						delivery_status: delivery_object.status,
+						delivery_name: delivery_object.item_name,
 						size:file.size,
 					}).save(function(err,image){	
 						if(err){
 						}
 						else{
-							
-							//Procedemos a actualizar el objeto doctor, hospital, o seguro
-							//Al cual se le haya agregado la imagen
-							//El doctor tiene 2 tipos de imágenes. Perfil, y galería.
-							if(owner=="doctor"){
-								if(type=="profile"){
-									object.profile_pic = {name:image.name, image_url: image.url, id: image._id};
-									object.save(function(err,doctor){
-											return {status: true, response: {image_url:image.url}};
-									});
-								}
-								else if(type=="gallery"){
-									Doctor.findOneAndUpdate(
-									    {_id: object._id},
-									    {$push: {gallery: {image_url:image.url, name:file.name, id: image._id}}},
-									    {safe: true, upsert: true},
-									    function(err, doctor) {
-									        console.log("Doctor: "+doctor);
-									    }
-									);
-								}
-							}
-							
-							//Los hospitales y seguros sólo tienen foto de perfil
-							else if(owner == "hospital" || owner == "insurancecompany"){
-								if(type=="profile"){
-									object.logo = {name:image.name, image_url: image.url, id: image._id};
-									object.save(function(err,doctor){
-											return {status: true, response: {image_url:image.url}};
-									});
-								}
-							}						
+							delivery_object.images.push({
+															name:image.name, 
+															image_url:image.url, 
+															id: image._id,
+															delivery_status: delivery_object.status,
+														});
+														
+							delivery_object.save(function(err,result){
+									return {status: true, response: {image_url:image.url}};
+							});												
 						}
 					});
 			  });
