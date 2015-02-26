@@ -133,6 +133,7 @@ var DeliveryItemSchema= new mongoose.Schema({
 	instructions : {type: String, required:true},
 	priority: {type: Number, required:false},
 	deadline: {type: Date, required:true},
+	date_created: {type: Date},
 	declared_value : {type: Number, required:false},
 	price_to_pay : {type: Number, required:false},
 	overall_status : {type: String, required:true}, //requested,started, finished
@@ -145,20 +146,6 @@ var DeliveryItemSchema= new mongoose.Schema({
 	DeliveryItem= mongoose.model('DeliveryItem',DeliveryItemSchema);
 //////////////////////////////////
 //End of Appointment  Schema//////
-//////////////////////////////////
-
-//////////////////////////////////
-//Review Schema///////////////////
-//////////////////////////////////
-var ReviewSchema= new mongoose.Schema({
-	user_id : {type: String, required:true},
-	messenger_id : {type: String, required:true},
-	review : {type: String, required:false},
-	date_created : {type: Date, required:true},
-}),
-	Review= mongoose.model('Review',ReviewSchema);
-//////////////////////////////////
-//End of Review Schema////////////
 //////////////////////////////////
 
 //////////////////////////////////
@@ -1048,6 +1035,7 @@ utils.log("Delivery","Recibo:",JSON.stringify(req.body));
 		user_id : req.body.user_id,
 		user_info: req.body.user_info,
 		item_name: req.body.item_name,
+		date_created: new Date(),
 		pickup_location : pickup_location,
 		pickup_object: req.body.pickup_object,
 		delivery_location : delivery_location,	
@@ -1243,7 +1231,7 @@ exports.getUserAborted = function(req,res){
 
 //Update*
 exports.addPicToDeliveryItem = function(req,res){
-/*Log*/utils.log("DeliveryItem/AddPic/"+req.params.delivery_id,"Recibo:",JSON.stringify(req.body));
+/*Log*/utils.log("DeliveryItem/AddPic/"+req.params.delivery_id,"Recibo:",JSON.stringify(req.files));
 	DeliveryItem.findOne({_id:req.params.delivery_id},exclude,function(err,object){
 		if(!object){
 			res.json({status: false, error: "not found"});
@@ -1762,9 +1750,9 @@ exports.deleteDeliveryItem = function(req,res){
 	});
 	
 };
-//////////////////////////////////////
-//End of Messenger CRUD////////////////////
-//////////////////////////////////////
+//////////////////////////////////
+//End of Messenger CRUD///////////
+//////////////////////////////////
 
 //////////////////////////////////
 //Verify//////////////////////////
@@ -2008,7 +1996,10 @@ var ios = req.body.ios ? true:false;
 var uploadImage = function(file,delivery_object,response){
 	//Verificamos que llegue archivo adjunto
 	if(!file){
-		console.log('No hay archivo');
+		response.json({
+						status: false, 
+						message: 'Error, no se recibió ningún archivo'
+					});
 		return;
 	} 
 	
@@ -2068,7 +2059,7 @@ var uploadImage = function(file,delivery_object,response){
 									response.json({
 													status: true, 
 													message: 'Actualización exitosa', 
-													response: result
+													response: result,
 												});
 							});												
 						}
