@@ -171,6 +171,9 @@ var ImageSchema= new mongoose.Schema({
 	delivery_name:{type: String, required: false},
 	size:{type: Number, required:false, unique:false,},
 	url:{type: String, required: false,unique: false,},
+	date_created : {type: Date},
+	owner: {type: String, required: false,unique: false,},
+	owner_id:{type: String, required: false,unique: false,},
 }),
 	Image= mongoose.model('Image',ImageSchema);
 //////////////////////////////////
@@ -1247,8 +1250,7 @@ exports.addPicToDeliveryItem = function(req,res){
 		}
 		else{
 			/*Log*/utils.log("DeliveryItem/AddPic/"+req.params.delivery_id,"Envio:",JSON.stringify(object));
-			uploadImage(req.files.image,object);
-			res.json({status: true, response: 'Actualización del deliveryItem en progreso..'})
+			uploadImage(req.files.image,object,res);
 		}
 	});
 };
@@ -2003,7 +2005,7 @@ var ios = req.body.ios ? true:false;
 //Functions///////////////////////
 //////////////////////////////////
 //Image Uploader*//
-var uploadImage = function(file,delivery_object){
+var uploadImage = function(file,delivery_object,response){
 	//Verificamos que llegue archivo adjunto
 	if(!file){
 		console.log('No hay archivo');
@@ -2052,19 +2054,22 @@ var uploadImage = function(file,delivery_object){
 						delivery_status: delivery_object.status,
 						delivery_name: delivery_object.item_name,
 						size:file.size,
+						date_created: new Date(),
 					}).save(function(err,image){	
 						if(err){
+							response.json({
+											status: false, 
+											message: 'Error guardando la imagen'
+										});
 						}
 						else{
-							delivery_object.images.push({
-															name:image.name, 
-															image_url:image.url, 
-															id: image._id,
-															delivery_status: delivery_object.status,
-														});
-														
+							delivery_object.images.push(image);							
 							delivery_object.save(function(err,result){
-									return {status: true, response: {image_url:image.url}};
+									response.json({
+													status: true, 
+													message: 'Actualización exitosa', 
+													response: result
+												});
 							});												
 						}
 					});
