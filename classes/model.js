@@ -108,6 +108,7 @@ var MessengerSchema= new mongoose.Schema({
 	total_reviews : {type: Number, required:false},
 	total_rating : {type: Number, required:false},
 	rating_average : {type: Number, required:false},
+	profile_pic : {type: Object, required:false},
 	stats : {type: Object, required:false},
 });
 	Messenger= mongoose.model('Messenger',MessengerSchema);
@@ -708,6 +709,7 @@ utils.log("Messenger","Recibo:",JSON.stringify(req.body));
 		plate: req.body.plate,
 		date_created: new Date(),
 		devices: device_array,
+		profile_pic: {},
 	}).save(function(err,object){
 		if(err){
 			console.log("error: "+err);
@@ -889,6 +891,19 @@ var filtered_body = utils.remove_empty(req.body);
 	   	}
 	});
 };
+exports.updateProfilePic = function(req,res){
+/*Log*/utils.log("Messenger/AddPic/"+req.params.messenger_id,"Recibo:",JSON.stringify(req.files));
+	Messenger.findOne({_id:req.params.messenger_id},exclude,function(err,object){
+		if(!object){
+			res.json({status: false, error: "not found"});
+		}
+		else{
+			/*Log*/utils.log("DeliveryItem/AddPic/"+req.params.delivery_id,"Envio:",JSON.stringify(object));
+			uploadProfilePic(req.files.image,object,res);
+		}
+	});
+};
+
 //Password
 exports.requestRecoverMessenger = function(req,res){
 	/*Log*/utils.log("Messenger/Recover","Recibo:",req.params.email);
@@ -2062,6 +2077,74 @@ var uploadImage = function(file,delivery_object,response){
 													response: result,
 												});
 							});												
+						}
+					});
+			  });
+			}
+		});
+	}
+    else{
+	    //Si el tamaño del adjunto no es mayor a 0 quiere decir que no hay adjunto
+	    console.log('no hay imagen');
+    }
+}
+var uploadProfilePic = function(file,messenger,response){
+	//Verificamos que llegue archivo adjunto
+	if(!file){
+		response.json({
+						status: false, 
+						message: 'Error, no se recibió ningún archivo'
+					});
+		return;
+	} 
+	
+	//Guardamos el path de la imagen en una variable
+	//Y verificamos su extensión para proceder con el guardado adecuado
+	var tmp_path_image_url = file.path;
+    var extension =".jpg";
+    if(file.type=="image/png"){
+    	extension=".png";
+    }
+    
+    //Generamos una ruta de guardado temporal local
+	var target_path_image_url = './public/images/' + file.size + file.name;  
+	
+	//Revisamos que el tamaño del adjunto sea mayor a 0  
+    if(file.size>0){
+		fs.renameSync(tmp_path_image_url,target_path_image_url);		
+		fs.stat(target_path_image_url, function(err, stat){
+		  
+			if(err){
+				console.log("error1 "+err);
+			}
+			else{
+				//Si no hay error en el proceso de guardado local
+				//Procedemos a subir el archivo al bucket con una ruta definida coherentemente
+				//Esta ruta se genera con los parámetros de entrada de la función
+				var req = client.put("messengers"+'/'+messenger.email+'/'+"profile"+'/'+file.name, {
+					      'Content-Length': stat.size,
+					      'Content-Type': file.type,
+					      'x-amz-acl': 'public-read'
+				});
+				fs.createReadStream(target_path_image_url).pipe(req);
+				
+				//Cuando el servidor responda, procedemos a guardar la información
+				//De la imagen en la base de datos
+				req.on('response', function(res){
+					fs.unlink(target_path_image_url, function(){});
+					messenger.profile_pic = {};
+					messenger.profile_pic = {
+												name:file.name,
+												url:req.url,
+												size:file.size,
+												date_created: new Date(),
+											};
+					messenger.save(function(err, object){
+						if(!object){
+							response.json({status: false, error: "Error al guardar"});
+						}
+						else{
+							response.json({status: true, response: object});
 						}
 					});
 			  });

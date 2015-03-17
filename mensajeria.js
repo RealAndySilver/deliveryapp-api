@@ -113,6 +113,7 @@ app.get('/api_1.0/Messengers', model.getAllMessengers);
 app.put('/api_1.0/Messenger/Login', model.authenticateMessenger);
 //User Update APIs
 app.put('/api_1.0/Messenger/Update/:messenger_id', model.updateMessenger);
+app.put('/api_1.0/Messenger/AddPic/:messenger_id', model.updateProfilePic);
 //User Delete APIs
 app.delete('/api_1.0/Messenger/:messenger_id', model.deleteMessenger);
 //Change Password
