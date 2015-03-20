@@ -1633,6 +1633,9 @@ exports.lastStatus = function(req,res){
 			   	else if (object.status == CONSTANTS.STATUS.SYSTEM.ACCEPTED){
 				   	res.json({status:false, message:"No se puede regresar en estado accepted, usar el servicio Abort"});
 			   	}
+			   	else if (object.status == CONSTANTS.STATUS.SYSTEM.INTRANSIT){
+				   	res.json({status:false, message:"No se puede regresar en estado in-transit, usar el servicio Abort"});
+			   	}
 			   	//Los siguientes casos son posteriores a los casos anteriores
 			   	//Y dependen de la variable roundtrip para crear un nuevo status siguiente
 				else{
@@ -1642,7 +1645,8 @@ exports.lastStatus = function(req,res){
 					if(object.roundtrip){
 						//Si el item se encuentra en tránsito debemos setearlo como
 						//returning
-						if(object.status == CONSTANTS.STATUS.SYSTEM.INTRANSIT){
+						/*
+if(object.status == CONSTANTS.STATUS.SYSTEM.INTRANSIT){
 							object.status = CONSTANTS.STATUS.SYSTEM.ACCEPTED;
 							object.save(function(err, result){
 								notifyEvent("user",result,object.status);
@@ -1653,9 +1657,10 @@ exports.lastStatus = function(req,res){
 										});
 							});
 						}
+*/
 						//Si el item se encuentra en returning debemos setearlo como
 						//in-transit
-						else if(object.status == CONSTANTS.STATUS.SYSTEM.RETURNING){
+						if(object.status == CONSTANTS.STATUS.SYSTEM.RETURNING){
 							object.status = CONSTANTS.STATUS.SYSTEM.INTRANSIT;
 							object.save(function(err, result){
 								notifyEvent("user",result,object.status);
@@ -1683,7 +1688,8 @@ exports.lastStatus = function(req,res){
 				   	//al punto de partida
 					else{
 						
-						if(object.status == CONSTANTS.STATUS.SYSTEM.INTRANSIT){
+						/*
+if(object.status == CONSTANTS.STATUS.SYSTEM.INTRANSIT){
 							object.status = CONSTANTS.STATUS.SYSTEM.ACCEPTED;
 							object.save(function(err, result){
 								notifyEvent("user",result,object.status);
@@ -1694,7 +1700,8 @@ exports.lastStatus = function(req,res){
 								});
 							});
 						}
-						else if(object.status == CONSTANTS.STATUS.SYSTEM.DELIVERED){
+*/
+						if(object.status == CONSTANTS.STATUS.SYSTEM.DELIVERED){
 							object.status = CONSTANTS.STATUS.SYSTEM.INTRANSIT;
 							object.overall_status = CONSTANTS.OVERALLSTATUS.STARTED;
 							object.save(function(err, result){
@@ -1791,6 +1798,18 @@ exports.deleteDeliveryItem = function(req,res){
 				});
 			}
 			else if(object.status == CONSTANTS.STATUS.SYSTEM.ACCEPTED){
+				DeliveryItem.remove({_id:req.params.delivery_id,user_id:req.params.user_id},
+				function(err){
+					if(err){
+						res.json({status: false, error: "No se pudo borrar ya que no se encontró el item"});
+					}
+					else{
+						//En este punto se le debe alertar al motorizado que el servicio fue cancelado
+						res.json({status:true, message:"DeliveryItem en estado accepted borrado exitosamente."});
+					}
+				});
+			}
+			else if(object.status == CONSTANTS.STATUS.SYSTEM.ABORTED){
 				DeliveryItem.remove({_id:req.params.delivery_id,user_id:req.params.user_id},
 				function(err){
 					if(err){
