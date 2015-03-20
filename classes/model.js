@@ -3,7 +3,7 @@
 //////////////////////////////////
 var mongoose = require('mongoose');
 var apn = require('apn');
-var send_push = require('../classes/push_sender');
+var push = require('../classes/push_sender');
 var utils = require('../classes/utils');
 var mail = require('../classes/mail_sender');
 var mail_template = require('../classes/mail_templates');
@@ -33,7 +33,40 @@ mongoose.connect("mongodb://iAmUser:iAmStudio1@ds053788.mongolab.com:53788/mensa
 //////////////////////////////////
 var exclude = {/*password:*/};
 var verifyEmailVar = true;
-
+var CONSTANTS = {
+	STATUS : {
+		SYSTEM : {
+			AVAILABLE : 'available',
+			ACCEPTED : 'accepted',
+			INTRANSIT : 'in-transit',
+			DELIVERED : 'delivered',
+			RETURNING : 'returning',
+			RETURNED : 'returned',
+			CANCELLED : 'cancelled',
+			ABORTED : 'aborted'
+		},
+		USER : {
+			AVAILABLE : 'Disponible',
+			ACCEPTED : 'Aceptado',
+			INTRANSIT : 'En Tránsito',
+			DELIVERED : 'Entregado',
+			RETURNING : 'Regresando',
+			RETURNED : 'Regresado',
+			CANCELLED : 'Cancelado',
+			ABORTED : 'Rechazado'
+		}
+	},
+	OS : {
+		IOS : 'iOS',
+		ANDROID : 'android'
+	}
+};
+var CONSTANTS_OVERALLSTATUS = {
+	REQUESTED : 'requested',
+	STARTED : 'started',
+	FINISHED : 'finished',
+	ABORTED : 'aborted'
+};
 //Producción
 //var hostname = "192.241.187.135:2000";
 var webapp = "192.241.187.135:3000"
@@ -80,7 +113,7 @@ var UserSchema= new mongoose.Schema({
 	lastname : {type: String, required:true},
 	mobilephone: {type: Number, required: true},
 	city: {type: String, required: false},
-	device : {type: [Device], required:false},
+	device : {type: Object, required:false},
 	favorites : {type: Array, required:false},
 	stats : {type: Object, required:false},
 }),
@@ -169,13 +202,11 @@ var ImageSchema= new mongoose.Schema({
 //////////////////////////////////
 
 //Development AMAZON BUCKET
-
 var client = knox.createClient({
     key: 'AKIAIERCR4POCARGBWHA'
   , secret: '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'
   , bucket: 'mensajeria'
 });
-
 
 //////////////////////////////////
 //Admin CRUD starts here//////////
@@ -285,7 +316,7 @@ exports.createUser = function(req,res){
 		mobilephone : req.body.mobilephone,
 		city : req.body.city,
 		date_created: new Date(),
-		devices: device_array,
+		device: {},
 	}).save(function(err,object){
 		if(err){
 			res.json({status: false, message: "Error al crear la cuenta.", err: err});
@@ -347,7 +378,7 @@ exports.authenticateUser = function(req,res){
 					req.body.device_info = utils.isJson(req.body.device_info) ? JSON.parse(req.body.device_info): req.body.device_info ;
 					
 					//Procedemos a guardar esta información dentro del documento
-					User.findOneAndUpdate({email:req.body.email}, {$addToSet:{devices:req.body.device_info}}, function(err,new_user){
+					User.findOneAndUpdate({email:req.body.email}, {$set:{device:req.body.device_info}}, function(err,new_user){
 						//Si no hay ningún error al guardar el device_info
 						if(!err){
 							if(!new_user){
@@ -431,7 +462,7 @@ exports.getAllUsers = function(req,res){
 exports.requestedDeliveries = function(req,res){
 	//Esta función expone un servicio para buscar los deliveries que el usuario haya iniciado, pero
 	//qué no hayan sido aceptados aún
-	DeliveryItem.find({user_id:req.params.user_id, overall_status:"requested"},exclude,function(err,objects){
+	DeliveryItem.find({user_id:req.params.user_id, overall_status:CONSTANTS_OVERALLSTATUS.REQUESTED},exclude,function(err,objects){
 		if(err){
 			res.json({status: false, error: "not found"});
 		}
@@ -443,7 +474,7 @@ exports.requestedDeliveries = function(req,res){
 exports.startedDeliveries = function(req,res){
 	//Esta función expone un servicio para buscar los deliveries que el usuario haya iniciado,
 	//y qué ya hayan sido aceptados, pero se encuentren en curso ó estado no finalizado
-	DeliveryItem.find({user_id:req.params.user_id, overall_status:"started"},exclude,function(err,objects){
+	DeliveryItem.find({user_id:req.params.user_id, overall_status:CONSTANTS_OVERALLSTATUS.STARTED},exclude,function(err,objects){
 		if(err){
 			res.json({status: false, error: "not found"});
 		}
@@ -455,7 +486,7 @@ exports.startedDeliveries = function(req,res){
 exports.finishedDeliveries = function(req,res){
 	//Esta función expone un servicio para buscar los deliveries que el usuario haya iniciado,
 	//qué ya hayan sido aceptados, y qué también hayan sido finalizados
-	DeliveryItem.find({user_id:req.params.user_id, overall_status:"finished"},exclude,function(err,objects){
+	DeliveryItem.find({user_id:req.params.user_id, overall_status:CONSTANTS_OVERALLSTATUS.FINISHED},exclude,function(err,objects){
 		if(err){
 			res.json({status: false, error: "not found"});
 		}
@@ -1061,8 +1092,8 @@ utils.log("Delivery","Recibo:",JSON.stringify(req.body));
 		deadline: req.body.deadline,
 		declared_value : req.body.declared_value,
 		price_to_pay : req.body.price_to_pay,
-		overall_status : "requested",
-		status : "available",
+		overall_status : CONSTANTS_OVERALLSTATUS.REQUESTED,
+		status : CONSTANTS.STATUS.SYSTEM.AVAILABLE,
 		pickup_time : req.body.pickup_time,
 		rated : false,
 		images : [],
@@ -1119,10 +1150,8 @@ exports.getNearDeliveryItems = function(req,res){
 	if(req.params.lat && req.params.lon && req.params.maxDistance){
 		var meters = parseInt(req.params.maxDistance);
 		query.pickup_location = {
-					$near:
-					{
-						$geometry:
-						{
+					$near:{
+						$geometry:{
 							type:"Point" ,
 							coordinates :[
 											req.params.lon, 
@@ -1132,7 +1161,7 @@ exports.getNearDeliveryItems = function(req,res){
 						$maxDistance:meters
 					}
 				};	
-		query.overall_status = "requested";
+		query.overall_status = CONSTANTS_OVERALLSTATUS.REQUESTED;
 	}
 	else{
 		res.json({status: false, error: "Faltan datos para la búsqueda"});
@@ -1273,12 +1302,12 @@ exports.acceptDeliveryItem = function(req,res){
 	}
 	//Procedemos a actualizar el DeliveryItem
 	//Este debe tener condicion de status: available y el id correcto
-	DeliveryItem.findOneAndUpdate({_id:req.params.delivery_id, status:"available"},
+	DeliveryItem.findOneAndUpdate({_id:req.params.delivery_id, status:CONSTANTS.STATUS.SYSTEM.AVAILABLE},
 	   {$set:{
 		   		messenger_id: req.body.messenger_info._id,
 		   		messenger_info: req.body.messenger_info,
-		   		status: "accepted",
-		   		overall_status: "started"
+		   		status: CONSTANTS.STATUS.SYSTEM.ACCEPTED,
+		   		overall_status: CONSTANTS_OVERALLSTATUS.STARTED
 		   	}}, 
 	   function(err,object){
 		   	if(!object){
@@ -1309,7 +1338,7 @@ exports.inTransitDeliveryItem = function(req,res){
 	}
 	//Procedemos a actualizar el DeliveryItem
 	//Este debe tener condicion de status: accepted y el id correcto del delivery y el mensajero
-	DeliveryItem.findOneAndUpdate({_id:req.params.delivery_id, status:"accepted", messenger_id:req.body.messenger_info._id},
+	DeliveryItem.findOneAndUpdate({_id:req.params.delivery_id, status:CONSTANTS.STATUS.SYSTEM.ACCEPTED, messenger_id:req.body.messenger_info._id},
 	   {$set:{
 		   		status: "in-transit",
 		   	}}, 
@@ -1355,7 +1384,7 @@ exports.deliverDeliveryItem = function(req,res){
 					//Si el item se encuentra en tránsito debemos setearlo como
 					//returning
 					if(object.status = "in-transit"){
-						object.status = "returning";
+						object.status = CONSTANTS.STATUS.SYSTEM.RETURNING;
 						object.save(function(err, result){
 					   	utils.log("DeliveryItem/Deliver","Envío:",JSON.stringify(object));
 							res.json({
@@ -1368,9 +1397,9 @@ exports.deliverDeliveryItem = function(req,res){
 					//Si el item se encuentra en tránsito debemos setearlo como
 					//returned y el overall_status se marca cómo finished
 					//este servicio ya está terminado y el motorizado cumplió
-					else if(object.status = "returning"){
-						object.status = "returned";
-						object.overall_status = "finished";
+					else if(object.status = CONSTANTS.STATUS.SYSTEM.RETURNING){
+						object.status = CONSTANTS.STATUS.SYSTEM.RETURNED;
+						object.overall_status = CONSTANTS_OVERALLSTATUS.FINISHED;
 						object.save(function(err, result){
 					   	utils.log("DeliveryItem/Deliver","Envío:",JSON.stringify(object));
 							res.json({
@@ -1387,8 +1416,8 @@ exports.deliverDeliveryItem = function(req,res){
 					//El item se encuentra en tránsito, debemos setearlo como
 					//delivered y el overall_status se marca cómo finished
 					//este servicio ya está terminado y el motorizado cumplió
-					object.status = "delivered";
-					object.overall_status = "finished";
+					object.status = CONSTANTS.STATUS.SYSTEM.DELIVERED;
+					object.overall_status = CONSTANTS_OVERALLSTATUS.FINISHED;
 					object.save(function(err, result){
 					utils.log("DeliveryItem/Delivered","Envío:",JSON.stringify(object));
 						res.json({
@@ -1405,7 +1434,7 @@ exports.deliverDeliveryItem = function(req,res){
 //DeliveryItem User Only Update
 exports.rateDeliveryItem = function(req,res){
 	/*Log*/utils.log("DeliveryItem/Rate/"+req.params.delivery_id,"Recibo:",JSON.stringify(req.body));
-	DeliveryItem.findOne({_id:req.params.delivery_id, user_id: req.body.user_id, overall_status: "finished"},exclude,function(err,object){
+	DeliveryItem.findOne({_id:req.params.delivery_id, user_id: req.body.user_id, overall_status: CONSTANTS_OVERALLSTATUS.FINISHED},exclude,function(err,object){
 		if(!object){
 			res.json({status: false, error: "not found"});
 		}
@@ -1459,7 +1488,7 @@ exports.nextStatus = function(req,res){
 		   	else{
 			   	//Este caso es cuando el usuario crea el pedido y este aún no ha sido aceptado
 			   	//Por ningún mensajero
-			   	if(object.status == "available"){
+			   	if(object.status == CONSTANTS.STATUS.SYSTEM.AVAILABLE){
 				   	//Este es el primer caso para la aceptación del servicio
 				   	//El objeto delivery tendrá ahora el id del mensajero
 				   	//y el objeto mensajero en su totalidad para ser mostrado
@@ -1468,14 +1497,15 @@ exports.nextStatus = function(req,res){
 			   		object.messenger_info = req.body.messenger_info;
 			   		//También modificamos el estado del pedido para que este no sea
 			   		//mostrado como disponible a otros mensajeros
-			   		object.status = "accepted";
-			   		object.overall_status = "started";
+			   		object.status = CONSTANTS.STATUS.SYSTEM.ACCEPTED;
+			   		object.overall_status = CONSTANTS_OVERALLSTATUS.STARTED;
 			   		//Procedemos a guardar con los datos modificados
 					object.save(function(err, result){
 						utils.log("DeliveryItem/Accept","Envío:",JSON.stringify(result));
+						notifyEvent("user",result,object.status);
 						Messenger.findOneAndUpdate({_id:req.body.messenger_info._id},
 		   									{$inc:{"stats.started_services":1}}, 
-		   									function(err, user){
+		   									function(err, messenger){
 		   									res.json({
 			   											status:true, 
 			   											message:"DeliveryItem aceptado exitosamente.",
@@ -1488,13 +1518,13 @@ exports.nextStatus = function(req,res){
 			   	}
 			   	//Este caso es cuando el mensajero ya aceptó el servicio 
 			   	//y se encuentra en camino para recogerlo
-			   	else if (object.status == "accepted"){
+			   	else if (object.status == CONSTANTS.STATUS.SYSTEM.ACCEPTED){
 				   	//También modificamos el estado del pedido para que este no sea
 			   		//mostrado como disponible a otros mensajeros
-				   	object.status = "in-transit";
+				   	object.status = CONSTANTS.STATUS.SYSTEM.INTRANSIT;
 				   	object.save(function(err, result){
 				   		utils.log("DeliveryItem/InTransit","Envío:",JSON.stringify(object));
-				   		
+				   		notifyEvent("user",result,object.status);
 				   		res.json({status:true, message:"DeliveryItem ahora está in-transit.", response:object});					});
 					return;
 			   	}
@@ -1508,13 +1538,14 @@ exports.nextStatus = function(req,res){
 						//Si el item se encuentra en tránsito debemos setearlo como
 						//returning
 						
-						if(object.status == "in-transit"){
-							object.status = "returning";
+						if(object.status == CONSTANTS.STATUS.SYSTEM.INTRANSIT){
+							object.status = CONSTANTS.STATUS.SYSTEM.RETURNING;
 							object.save(function(err, result){
+							notifyEvent("user",result,object.status);
 						   	utils.log("DeliveryItem/Returning","Envío:",JSON.stringify(object));
 								res.json({
 											status:true, 
-											message:"DeliveryItem ahora está returning.", 
+											message:"DeliveryItem ahora está" + object.status, 
 											response:result
 										});
 							});
@@ -1522,17 +1553,18 @@ exports.nextStatus = function(req,res){
 						//Si el item se encuentra en tránsito debemos setearlo como
 						//returned y el overall_status se marca cómo finished
 						//este servicio ya está terminado y el motorizado cumplió
-						else if(object.status = "returning"){
-							object.status = "returned";
-							object.overall_status = "finished";
+						else if(object.status = CONSTANTS.STATUS.SYSTEM.RETURNING){
+							object.status = CONSTANTS.STATUS.SYSTEM.RETURNED;
+							object.overall_status = CONSTANTS_OVERALLSTATUS.FINISHED;
 							object.save(function(err, result){
+								notifyEvent("user",result,object.status);
 							   	utils.log("DeliveryItem/Returned","Envío:",JSON.stringify(object));
 							   	Messenger.findOneAndUpdate({_id:req.body.messenger_info._id},
 	   									{$inc:{"stats.finished_services":1}}, 
 	   									function(err, user){
 	   									res.json({
 												status:true, 
-												message:"DeliveryItem ahora está returned.", 
+												message:"DeliveryItem ahora está" + object.status, 
 												response:result
 											});
 		   						});
@@ -1545,16 +1577,17 @@ exports.nextStatus = function(req,res){
 						//El item se encuentra en tránsito, debemos setearlo como
 						//delivered y el overall_status se marca cómo finished
 						//este servicio ya está terminado y el motorizado cumplió
-						object.status = "delivered";
-						object.overall_status = "finished";
+						object.status = CONSTANTS.STATUS.SYSTEM.DELIVERED;
+						object.overall_status = CONSTANTS_OVERALLSTATUS.FINISHED;
 						object.save(function(err, result){
+							notifyEvent("user",result,object.status);
 							utils.log("DeliveryItem/Delivered","Envío:",JSON.stringify(object));
 							Messenger.findOneAndUpdate({_id:req.body.messenger_info._id},
 	   									{$inc:{"stats.finished_services":1}}, 
 	   									function(err, user){
 		   									res.json({
 											status:true, 
-											message:"DeliveryItem ahora está delivered.", 
+											message:"DeliveryItem ahora está" + object.status, 
 											response:result
 										});
 	   						});
@@ -1590,14 +1623,14 @@ exports.lastStatus = function(req,res){
 		   	else{
 			   	//En este caso, el mensajero no tendrá acceso al deliveryitem y no podrá 
 			   	//regresar el status.. es imposible
-			   	if(object.status == "available"){
+			   	if(object.status == CONSTANTS.STATUS.SYSTEM.AVAILABLE){
 					res.json({status:false, message:"No se puede regresar en estado available"});
 					return;
 			   	}
 			   	//En este caso, el mensajero tendrá acceso al deliveryitem pero no podrá 
 			   	//regresar el status. Para regresar este status es necesario usar el servicio
 			   	//de Abort
-			   	else if (object.status == "accepted"){
+			   	else if (object.status == CONSTANTS.STATUS.SYSTEM.ACCEPTED){
 				   	res.json({status:false, message:"No se puede regresar en estado accepted, usar el servicio Abort"});
 			   	}
 			   	//Los siguientes casos son posteriores a los casos anteriores
@@ -1609,35 +1642,38 @@ exports.lastStatus = function(req,res){
 					if(object.roundtrip){
 						//Si el item se encuentra en tránsito debemos setearlo como
 						//returning
-						if(object.status == "in-transit"){
-							object.status = "accepted";
+						if(object.status == CONSTANTS.STATUS.SYSTEM.INTRANSIT){
+							object.status = CONSTANTS.STATUS.SYSTEM.ACCEPTED;
 							object.save(function(err, result){
+								notifyEvent("user",result,object.status);
 								res.json({
 											status:true, 
-											message:"DeliveryItem ahora está accepted.", 
+											message:"DeliveryItem ahora está" + object.status, 
 											response:result
 										});
 							});
 						}
 						//Si el item se encuentra en returning debemos setearlo como
 						//in-transit
-						else if(object.status == "returning"){
-							object.status = "in-transit";
+						else if(object.status == CONSTANTS.STATUS.SYSTEM.RETURNING){
+							object.status = CONSTANTS.STATUS.SYSTEM.INTRANSIT;
 							object.save(function(err, result){
+								notifyEvent("user",result,object.status);
 								res.json({
 											status:true, 
-											message:"DeliveryItem ahora está in-transit.", 
+											message:"DeliveryItem ahora está" + object.status, 
 											response:result
 										});
 							});
 						}
-						else if(object.status == "returned"){
-							object.status = "returning";
-							object.overall_status = "started"
+						else if(object.status == CONSTANTS.STATUS.SYSTEM.RETURNED){
+							object.status = CONSTANTS.STATUS.SYSTEM.RETURNING;
+							object.overall_status = CONSTANTS_OVERALLSTATUS.STARTED
 							object.save(function(err, result){
+								notifyEvent("user",result,object.status);
 								res.json({
 											status:true, 
-											message:"DeliveryItem ahora está in-transit.", 
+											message:"DeliveryItem ahora está" + object.status, 
 											response:result
 										});
 							});
@@ -1646,23 +1682,26 @@ exports.lastStatus = function(req,res){
 					//Este caso indica que el item después de entregado NO debe regresar
 				   	//al punto de partida
 					else{
-						if(object.status == "in-transit"){
-							object.status = "accepted";
+						
+						if(object.status == CONSTANTS.STATUS.SYSTEM.INTRANSIT){
+							object.status = CONSTANTS.STATUS.SYSTEM.ACCEPTED;
 							object.save(function(err, result){
-									res.json({
+								notifyEvent("user",result,object.status);
+								res.json({
 									status:true, 
-									message:"DeliveryItem ahora está accepted.", 
+									message:"DeliveryItem ahora está" + object.status, 
 									response:result
 								});
 							});
 						}
-						else if(object.status == "delivered"){
-							object.status = "in-transit";
-							object.overall_status = "started";
+						else if(object.status == CONSTANTS.STATUS.SYSTEM.DELIVERED){
+							object.status = CONSTANTS.STATUS.SYSTEM.INTRANSIT;
+							object.overall_status = CONSTANTS_OVERALLSTATUS.STARTED;
 							object.save(function(err, result){
-									res.json({
+								notifyEvent("user",result,object.status);
+								res.json({
 									status:true, 
-									message:"DeliveryItem ahora está in-transit.", 
+									message:"DeliveryItem ahora está" + object.status, 
 									response:result
 								});
 							});
@@ -1700,31 +1739,33 @@ exports.abortDeliveryItem = function(req,res){
 			   	res.json({status: false, error: "No se encontró el DeliveryItem"});
 		   	}
 		   	else{
-			   	if(object.status == "accepted"){
-					object.status = "available";
-					object.overall_status = "requested";
+			   	if(object.status == CONSTANTS.STATUS.SYSTEM.ACCEPTED){
+					object.status = CONSTANTS.STATUS.SYSTEM.AVAILABLE;
+					object.overall_status = CONSTANTS_OVERALLSTATUS.REQUESTED;
 					object.messenger_info = {};
-					object.messenger_id = "";
+					object.messenger_id = '';
 					object.save(function(err, result){
-				   	utils.log("DeliveryItem/Abort","Envío:",JSON.stringify(object));
-						res.json({
-									status:true, 
-									message:"DeliveryItem ahora está available para el usuario y no está asignado a ningún mensajero.", 
-									response:result
-								});
+						notifyEvent("user",result,CONSTANTS.STATUS.SYSTEM.CANCELLED);
+					   	utils.log("DeliveryItem/Abort","Envío:",JSON.stringify(object));
+							res.json({
+										status:true, 
+										message:"DeliveryItem ahora está available para el usuario y no está asignado a ningún mensajero.", 
+										response:result
+									});
 					});
 				}
 				else{
-					object.status == "aborted";
-					object.overall_status = "aborted";
+					object.status == CONSTANTS_OVERALLSTATUS.ABORTED;
+					object.overall_status = CONSTANTS_OVERALLSTATUS.ABORTED;
 					object.messenger_info.abort_reason = req.body.messenger_info.abort_reason;
 					object.save(function(err, result){
-				   	utils.log("DeliveryItem/Abort","Envío:",JSON.stringify(object));
-						res.json({
-									status:true, 
-									message:"Servicio cancelado por mensajero. Razón: "+req.body.messenger_info.abort_reason, 
-									response:result
-								});
+						notifyEvent("user",result,CONSTANTS.STATUS.SYSTEM.ABORTED);
+					   	utils.log("DeliveryItem/Abort","Envío:",JSON.stringify(object));
+							res.json({
+										status:true, 
+										message:"Servicio cancelado por mensajero. Razón: "+req.body.messenger_info.abort_reason, 
+										response:result
+							});
 					});
 				}
 		   	}
@@ -1738,7 +1779,7 @@ exports.deleteDeliveryItem = function(req,res){
 			res.json({status: false, error: "not found"});
 		}
 		else{
-			if(object.status == "available"){
+			if(object.status == CONSTANTS.STATUS.SYSTEM.AVAILABLE){
 				DeliveryItem.remove({_id:req.params.delivery_id,user_id:req.params.user_id},
 				function(err){
 					if(err){
@@ -1749,7 +1790,7 @@ exports.deleteDeliveryItem = function(req,res){
 					}
 				});
 			}
-			else if(object.status == "accepted"){
+			else if(object.status == CONSTANTS.STATUS.SYSTEM.ACCEPTED){
 				DeliveryItem.remove({_id:req.params.delivery_id,user_id:req.params.user_id},
 				function(err){
 					if(err){
@@ -1760,6 +1801,9 @@ exports.deleteDeliveryItem = function(req,res){
 						res.json({status:true, message:"DeliveryItem en estado accepted borrado exitosamente."});
 					}
 				});
+			}
+			else{
+				res.json({status:false, message:"Este pedido no puede ser eliminado. Por favor, póngase en contacto con el mensajero."});
 			}
 		}
 	});
@@ -1868,140 +1912,6 @@ exports.sendEmailVerification = function(req,res){
 };
 //////////////////////////////////
 //End of Verify///////////////////
-//////////////////////////////////
-
-//////////////////////////////////
-//Send Push Notification//////////
-//////////////////////////////////
-exports.sendPush = function (req,res){
-var android = req.body.android ? true:false;
-var ios = req.body.ios ? true:false;
-	Admin.findOne({_id:req.body.admin_id}, function(err,admin){
-		if(!admin){
-			
-		}
-		else{
-			new Push({
-			message: req.body.message,
-			app_id:req.body.app_id,
-			date:new Date(),
-			sent_by:admin,
-			android:android,
-			ios:ios,
-			delivered_qty_ios: ios ? req.body.delivered_qty_ios:0,
-			delivered_qty_android: android ? req.body.delivered_qty_android:0,
-			}).save(function(err,push){
-				if(err){
-					res.json({response:"error creating push on DB", error:err});
-				}
-				else{
-				if(ios){
-					PushToken.find({app_id:req.body.app_id, device_brand:"Apple"},{ push_token: 1, _id: 0 }, function(err,pushtokens){
-						if(pushtokens.length<=0){
-						}
-						else{
-							App.findOne({_id:req.body.app_id}, function(err,app){
-								var extension = ".pem";
-								var carpeta = app.is_development ? "push_certs/dev/":"push_certs/prod/";
-								var url = app.is_development ? 'gateway.sandbox.push.apple.com':'gateway.push.apple.com';
-								var cert = carpeta+app.ios_cert+extension;
-								var key =  carpeta+app.ios_cert_key+extension;
-								var tokens_array = new Array();
-								for(var i=0;i<pushtokens.length;i++){
-									tokens_array.push(pushtokens[i].push_token);
-								}
-								var service = new apn.connection({ gateway:url, cert:cert, key:key});
-
-								service.on('connected', function() {console.log("Connected");});
-								service.on('transmitted', function(notification, device) {
-									console.log("Notification transmitted to:" + device.token.toString('hex'));
-								});
-								service.on('transmissionError', function(errCode, notification, device) {
-								    console.error("Notification caused error: " + errCode + " for device ", device, notification);
-								});
-								service.on('timeout', function () {console.log("Connection Timeout");});
-								service.on('disconnected', function() {console.log("Disconnected from APNS");});
-								service.on('socketError', console.error);								
-								
-								// If you plan on sending identical paylods to many devices you can do something like this.
-								pushToManyIOS = function(tokens) {
-								    var note = new apn.notification();
-								    note.expiry = Math.floor(Date.now() / 1000) + 3600; // Expires 1 hour from now.
-									note.badge = 0;
-									note.sound = "ping.aiff";
-									note.alert = req.body.message;
-									note.payload = {'action': "no action"};
-								    service.pushNotification(note, tokens);
-								}
-								pushToManyIOS(tokens_array);
-								//console.log("enviar push a: "+tokens_array);
-							});
-						}
-					});
-				}
-				if(android){
-					PushToken.find({app_id:req.body.app_id, device_brand:"Android"}, function(err,pushtokens){
-						if(pushtokens.length<=0){
-						}
-						else{
-							// or with object values
-							App.findOne({_id:req.body.app_id}, function(err,app){
-							if(app){
-									var message = new gcm.Message({
-									    collapseKey: 'demo',
-									    delayWhileIdle: true,
-									    timeToLive: 3,
-									    data: {
-									        key1: 'message1',
-									        key2: 'message2'
-									    }
-									});
-									
-									var sender = new gcm.Sender(app.gcm_apikey);
-									var registrationIds = [];
-									
-									// OPTIONAL
-									// add new key-value in data object
-									//message.addDataWithKeyValue('key1','message1');
-									//message.addDataWithKeyValue('key2','message2');
-									
-									// or add a data object
-									message.addDataWithObject({
-									    message: req.body.message,
-									    app_name: app.name,
-									});
-									
-									message.collapseKey = 'demo';
-									message.delayWhileIdle = true;
-									message.timeToLive = 3;
-									// END OPTION
-									
-									// At least one required
-									for(var i=0;i<pushtokens.length;i++){
-										registrationIds.push(pushtokens[i].push_token);		
-									}					
-									/**
-									 * Params: message-literal, registrationIds-array, No. of retries, callback-function
-									 **/
-									sender.send(message, registrationIds, 4, function (err, result) {
-									    console.log(result);
-									});
-								}
-							});
-						}
-					});
-				}
-					res.format({
-						html: function () { res.redirect('/Dashboard/'+req.body.admin_id); },
-						json: function () { res.send(); },
-					});
-				}
-			});
-		}
-	});
-};
-//////////////////////////////////
-//End of Send Push Notification///
 //////////////////////////////////
 
 //////////////////////////////////
@@ -2209,6 +2119,7 @@ var emailVerification = function (req,data,type){
 	var url = 'http://'+hostname+'/api_1.0/Account/Verify/'+type+'/'+emailB64+'/'+tokenB64;
 				mail.send("Verifica tu cuenta", mail_template.email_verification(data,url), data.email);
 };
+//Price Calculator
 exports.getPrice = function (req,res){
 	distance.get(
 	{
@@ -2262,6 +2173,63 @@ exports.getPrice = function (req,res){
 			}
 		}
 	});
+};
+//Notifier
+var notifyEvent = function(type,inputObject,status){
+
+	var notification = {
+		status : '',
+		type : '',
+		message : '',
+		action : status,
+		os : '',
+		token : ''
+	};
+	var messageintro = "Tu pedido ";
+	if(type=="user"){
+		User.findOne({_id:inputObject.user_id}, function(err, object){
+			if(!object){
+				res.json({status:false, message:"not found"});
+			}
+			else{
+				if(status == CONSTANTS.STATUS.SYSTEM.ACCEPTED){
+					notification.status = CONSTANTS.STATUS.USER.ACCEPTED;
+					notification.message = messageintro+"'"+ inputObject.item_name+"'"+" ha sido aceptado."
+				}
+				else if(status == CONSTANTS.STATUS.SYSTEM.INTRANSIT){
+					notification.status = CONSTANTS.STATUS.USER.INTRANSIT;
+					notification.message = messageintro+"'"+ inputObject.item_name+"'"+" se encuentra en tránsito."
+				}
+				else if(status == CONSTANTS.STATUS.SYSTEM.RETURNING){
+					notification.status = CONSTANTS.STATUS.USER.RETURNING;
+					notification.message = messageintro+"'"+ inputObject.item_name+"'"+" se encuentra regresando."
+				}
+				else if(status == CONSTANTS.STATUS.SYSTEM.RETURNED){
+					notification.status = CONSTANTS.STATUS.USER.RETURNED;
+					notification.message = messageintro+"'"+ inputObject.item_name+"'"+" ha sido regresado con éxito."
+				}
+				else if(status == CONSTANTS.STATUS.SYSTEM.DELIVERED){
+					notification.status = CONSTANTS.STATUS.USER.DELIVERED;
+					notification.message = messageintro+"'"+ inputObject.item_name+"'"+" ha sido entregado con éxito."
+				}
+				else if(status == CONSTANTS.STATUS.SYSTEM.CANCELLED){
+					notification.status = CONSTANTS.STATUS.USER.CANCELLED;
+					notification.message = messageintro+"'"+ inputObject.item_name+"'"+" está disponible para ser aceptado."
+				}
+				else if(status == CONSTANTS.STATUS.SYSTEM.ABORTED){
+					notification.status = CONSTANTS.STATUS.USER.ABORTED;
+					notification.message = messageintro+"'"+ inputObject.item_name+"'"+" ha sido cancelado por el mensajero."
+				}
+				notification.type = 'delivery';
+				notification.os = object.device.os;
+				notification.token = object.device.token;
+				notification.id = inputObject._id
+				push.send(notification);
+			}
+		});
+	}
+	else if(type == "messenger"){	
+	}
 };
 /////////////////////////////////
 //End of Functions///////////////
