@@ -56,16 +56,16 @@ var CONSTANTS = {
 			ABORTED : 'Rechazado'
 		}
 	},
+	OVERALLSTATUS : {
+		REQUESTED : 'requested',
+		STARTED : 'started',
+		FINISHED : 'finished',
+		ABORTED : 'aborted'
+	},
 	OS : {
 		IOS : 'iOS',
 		ANDROID : 'android'
 	}
-};
-var CONSTANTS_OVERALLSTATUS = {
-	REQUESTED : 'requested',
-	STARTED : 'started',
-	FINISHED : 'finished',
-	ABORTED : 'aborted'
 };
 //Producción
 //var hostname = "192.241.187.135:2000";
@@ -462,7 +462,7 @@ exports.getAllUsers = function(req,res){
 exports.requestedDeliveries = function(req,res){
 	//Esta función expone un servicio para buscar los deliveries que el usuario haya iniciado, pero
 	//qué no hayan sido aceptados aún
-	DeliveryItem.find({user_id:req.params.user_id, overall_status:CONSTANTS_OVERALLSTATUS.REQUESTED},exclude,function(err,objects){
+	DeliveryItem.find({user_id:req.params.user_id, overall_status:CONSTANTS.OVERALLSTATUS.REQUESTED},exclude,function(err,objects){
 		if(err){
 			res.json({status: false, error: "not found"});
 		}
@@ -474,7 +474,7 @@ exports.requestedDeliveries = function(req,res){
 exports.startedDeliveries = function(req,res){
 	//Esta función expone un servicio para buscar los deliveries que el usuario haya iniciado,
 	//y qué ya hayan sido aceptados, pero se encuentren en curso ó estado no finalizado
-	DeliveryItem.find({user_id:req.params.user_id, overall_status:CONSTANTS_OVERALLSTATUS.STARTED},exclude,function(err,objects){
+	DeliveryItem.find({user_id:req.params.user_id, overall_status:CONSTANTS.OVERALLSTATUS.STARTED},exclude,function(err,objects){
 		if(err){
 			res.json({status: false, error: "not found"});
 		}
@@ -486,7 +486,7 @@ exports.startedDeliveries = function(req,res){
 exports.finishedDeliveries = function(req,res){
 	//Esta función expone un servicio para buscar los deliveries que el usuario haya iniciado,
 	//qué ya hayan sido aceptados, y qué también hayan sido finalizados
-	DeliveryItem.find({user_id:req.params.user_id, overall_status:CONSTANTS_OVERALLSTATUS.FINISHED},exclude,function(err,objects){
+	DeliveryItem.find({user_id:req.params.user_id, overall_status:CONSTANTS.OVERALLSTATUS.FINISHED},exclude,function(err,objects){
 		if(err){
 			res.json({status: false, error: "not found"});
 		}
@@ -1092,7 +1092,7 @@ utils.log("Delivery","Recibo:",JSON.stringify(req.body));
 		deadline: req.body.deadline,
 		declared_value : req.body.declared_value,
 		price_to_pay : req.body.price_to_pay,
-		overall_status : CONSTANTS_OVERALLSTATUS.REQUESTED,
+		overall_status : CONSTANTS.OVERALLSTATUS.REQUESTED,
 		status : CONSTANTS.STATUS.SYSTEM.AVAILABLE,
 		pickup_time : req.body.pickup_time,
 		rated : false,
@@ -1161,7 +1161,7 @@ exports.getNearDeliveryItems = function(req,res){
 						$maxDistance:meters
 					}
 				};	
-		query.overall_status = CONSTANTS_OVERALLSTATUS.REQUESTED;
+		query.overall_status = CONSTANTS.OVERALLSTATUS.REQUESTED;
 	}
 	else{
 		res.json({status: false, error: "Faltan datos para la búsqueda"});
@@ -1307,7 +1307,7 @@ exports.acceptDeliveryItem = function(req,res){
 		   		messenger_id: req.body.messenger_info._id,
 		   		messenger_info: req.body.messenger_info,
 		   		status: CONSTANTS.STATUS.SYSTEM.ACCEPTED,
-		   		overall_status: CONSTANTS_OVERALLSTATUS.STARTED
+		   		overall_status: CONSTANTS.OVERALLSTATUS.STARTED
 		   	}}, 
 	   function(err,object){
 		   	if(!object){
@@ -1399,7 +1399,7 @@ exports.deliverDeliveryItem = function(req,res){
 					//este servicio ya está terminado y el motorizado cumplió
 					else if(object.status = CONSTANTS.STATUS.SYSTEM.RETURNING){
 						object.status = CONSTANTS.STATUS.SYSTEM.RETURNED;
-						object.overall_status = CONSTANTS_OVERALLSTATUS.FINISHED;
+						object.overall_status = CONSTANTS.OVERALLSTATUS.FINISHED;
 						object.save(function(err, result){
 					   	utils.log("DeliveryItem/Deliver","Envío:",JSON.stringify(object));
 							res.json({
@@ -1417,7 +1417,7 @@ exports.deliverDeliveryItem = function(req,res){
 					//delivered y el overall_status se marca cómo finished
 					//este servicio ya está terminado y el motorizado cumplió
 					object.status = CONSTANTS.STATUS.SYSTEM.DELIVERED;
-					object.overall_status = CONSTANTS_OVERALLSTATUS.FINISHED;
+					object.overall_status = CONSTANTS.OVERALLSTATUS.FINISHED;
 					object.save(function(err, result){
 					utils.log("DeliveryItem/Delivered","Envío:",JSON.stringify(object));
 						res.json({
@@ -1434,7 +1434,7 @@ exports.deliverDeliveryItem = function(req,res){
 //DeliveryItem User Only Update
 exports.rateDeliveryItem = function(req,res){
 	/*Log*/utils.log("DeliveryItem/Rate/"+req.params.delivery_id,"Recibo:",JSON.stringify(req.body));
-	DeliveryItem.findOne({_id:req.params.delivery_id, user_id: req.body.user_id, overall_status: CONSTANTS_OVERALLSTATUS.FINISHED},exclude,function(err,object){
+	DeliveryItem.findOne({_id:req.params.delivery_id, user_id: req.body.user_id, overall_status: CONSTANTS.OVERALLSTATUS.FINISHED},exclude,function(err,object){
 		if(!object){
 			res.json({status: false, error: "not found"});
 		}
@@ -1498,7 +1498,7 @@ exports.nextStatus = function(req,res){
 			   		//También modificamos el estado del pedido para que este no sea
 			   		//mostrado como disponible a otros mensajeros
 			   		object.status = CONSTANTS.STATUS.SYSTEM.ACCEPTED;
-			   		object.overall_status = CONSTANTS_OVERALLSTATUS.STARTED;
+			   		object.overall_status = CONSTANTS.OVERALLSTATUS.STARTED;
 			   		//Procedemos a guardar con los datos modificados
 					object.save(function(err, result){
 						utils.log("DeliveryItem/Accept","Envío:",JSON.stringify(result));
@@ -1555,7 +1555,7 @@ exports.nextStatus = function(req,res){
 						//este servicio ya está terminado y el motorizado cumplió
 						else if(object.status = CONSTANTS.STATUS.SYSTEM.RETURNING){
 							object.status = CONSTANTS.STATUS.SYSTEM.RETURNED;
-							object.overall_status = CONSTANTS_OVERALLSTATUS.FINISHED;
+							object.overall_status = CONSTANTS.OVERALLSTATUS.FINISHED;
 							object.save(function(err, result){
 								notifyEvent("user",result,object.status);
 							   	utils.log("DeliveryItem/Returned","Envío:",JSON.stringify(object));
@@ -1578,7 +1578,7 @@ exports.nextStatus = function(req,res){
 						//delivered y el overall_status se marca cómo finished
 						//este servicio ya está terminado y el motorizado cumplió
 						object.status = CONSTANTS.STATUS.SYSTEM.DELIVERED;
-						object.overall_status = CONSTANTS_OVERALLSTATUS.FINISHED;
+						object.overall_status = CONSTANTS.OVERALLSTATUS.FINISHED;
 						object.save(function(err, result){
 							notifyEvent("user",result,object.status);
 							utils.log("DeliveryItem/Delivered","Envío:",JSON.stringify(object));
@@ -1668,7 +1668,7 @@ exports.lastStatus = function(req,res){
 						}
 						else if(object.status == CONSTANTS.STATUS.SYSTEM.RETURNED){
 							object.status = CONSTANTS.STATUS.SYSTEM.RETURNING;
-							object.overall_status = CONSTANTS_OVERALLSTATUS.STARTED
+							object.overall_status = CONSTANTS.OVERALLSTATUS.STARTED
 							object.save(function(err, result){
 								notifyEvent("user",result,object.status);
 								res.json({
@@ -1696,7 +1696,7 @@ exports.lastStatus = function(req,res){
 						}
 						else if(object.status == CONSTANTS.STATUS.SYSTEM.DELIVERED){
 							object.status = CONSTANTS.STATUS.SYSTEM.INTRANSIT;
-							object.overall_status = CONSTANTS_OVERALLSTATUS.STARTED;
+							object.overall_status = CONSTANTS.OVERALLSTATUS.STARTED;
 							object.save(function(err, result){
 								notifyEvent("user",result,object.status);
 								res.json({
@@ -1741,7 +1741,7 @@ exports.abortDeliveryItem = function(req,res){
 		   	else{
 			   	if(object.status == CONSTANTS.STATUS.SYSTEM.ACCEPTED){
 					object.status = CONSTANTS.STATUS.SYSTEM.AVAILABLE;
-					object.overall_status = CONSTANTS_OVERALLSTATUS.REQUESTED;
+					object.overall_status = CONSTANTS.OVERALLSTATUS.REQUESTED;
 					object.messenger_info = {};
 					object.messenger_id = '';
 					object.save(function(err, result){
@@ -1755,8 +1755,8 @@ exports.abortDeliveryItem = function(req,res){
 					});
 				}
 				else{
-					object.status == CONSTANTS_OVERALLSTATUS.ABORTED;
-					object.overall_status = CONSTANTS_OVERALLSTATUS.ABORTED;
+					object.status == CONSTANTS.OVERALLSTATUS.ABORTED;
+					object.overall_status = CONSTANTS.OVERALLSTATUS.ABORTED;
 					object.messenger_info.abort_reason = req.body.messenger_info.abort_reason;
 					object.save(function(err, result){
 						notifyEvent("user",result,CONSTANTS.STATUS.SYSTEM.ABORTED);
