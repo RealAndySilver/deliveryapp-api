@@ -71,7 +71,7 @@ var CONSTANTS = {
 //var hostname = "192.241.187.135:2000";
 var webapp = "192.241.187.135:3000"
 //Dev
-var hostname = "192.168.0.40:2000";
+var hostname = "192.168.0.44:2000";
 //var webapp = "192.241.187.135:3000";
 
 //////////////////////////////////
@@ -952,7 +952,7 @@ exports.requestRecoverMessenger = function(req,res){
 				}
 				else{
 					if(result){
-						var url = 'http://'+hostname+'/api_1.0/Password/Redirect/user/'+object.email+'/new_password/'+tokenB64;
+						var url = 'http://'+hostname+'/api_1.0/Password/Redirect/messenger/'+object.email+'/new_password/'+tokenB64;
 						mail.send("Recuperar Contraseña", 
 									"Hola "+object.name+". <br>Ingresa a este link para recuperar tu contraseña:<br> <a href='"+url+"'> Recuperar </a>",object.email);
 						res.json({status: true, response: {token:tokenB64}});
@@ -1144,52 +1144,63 @@ exports.getAllDeliveryItems = function(req,res){
 };
 exports.getNearDeliveryItems = function(req,res){
 	var query = {};
-	//Verificamos que lleguen los 3 parámetros completos lat lon y distancia
-	//Luego creamos el query de la manera adecuada para que la base de datos
-	//Haga la búsqueda por proximidad
-	if(req.params.lat && req.params.lon && req.params.maxDistance){
-		var meters = parseInt(req.params.maxDistance);
-		query.pickup_location = {
-					$near:{
-						$geometry:{
-							type:"Point" ,
-							coordinates :[
-											req.params.lon, 
-											req.params.lat
-										]
-						},
-						$maxDistance:meters
-					}
-				};	
-		query.overall_status = CONSTANTS.OVERALLSTATUS.REQUESTED;
-	}
-	else{
-		res.json({status: false, error: "Faltan datos para la búsqueda"});
-	}
-		console.log("query: "+JSON.stringify(query));
-
-	var sort = {};
-	if(req.params.sort){
-		sort = utils.isJson(req.params.sort) ? JSON.parse(req.params.sort):req.params.sort;
-	}
-	utils.log("DeliveryItem/Near/"+req.params.lat+"/"+req.params.lon+"/"+ req.params.maxDistance,"Recibo:","GET");
-	DeliveryItem.find(query)
-	.sort(sort.name)
-	.skip(sort.skip)
-	.limit(sort.limit)
-	.execFind(function(err,objects){
-		if(!err){
-			if(objects.length<=0){
-				res.json({status: false, error: "not found"});
+	var meters = "";
+	var maxServices = 5;
+	DeliveryItem.find({messenger_id:req.params.messenger_id, 
+						overall_status: CONSTANTS.OVERALLSTATUS.STARTED},exclude,function(err,object){
+		if(!object || object.length < maxServices){
+			//Verificamos que lleguen los 3 parámetros completos lat lon y distancia
+			//Luego creamos el query de la manera adecuada para que la base de datos
+			//Haga la búsqueda por proximidad
+			if(req.params.lat && req.params.lon && req.params.maxDistance){
+				meters = parseInt(req.params.maxDistance);
+				query.pickup_location = {
+							$near:{
+								$geometry:{
+									type:"Point" ,
+									coordinates :[
+													req.params.lon, 
+													req.params.lat
+												]
+								},
+								$maxDistance:meters
+							}
+						};	
+				query.overall_status = CONSTANTS.OVERALLSTATUS.REQUESTED;
 			}
 			else{
-				utils.log("DeliveryItem/Near","Envío:",JSON.stringify(objects));
-				res.json({status: true, response: objects});
+				res.json({status: false, error: "Faltan datos para la búsqueda"});
 			}
+				console.log("query: "+JSON.stringify(query));
+		
+			var sort = {};
+			if(req.params.sort){
+				sort = utils.isJson(req.params.sort) ? JSON.parse(req.params.sort):req.params.sort;
+			}
+			utils.log("DeliveryItem/Near/"+req.params.lat+"/"+req.params.lon+"/"+ req.params.maxDistance,"Recibo:","GET");
+			DeliveryItem.find(query)
+			.sort(sort.name)
+			.skip(sort.skip)
+			.limit(sort.limit)
+			.execFind(function(err,objects){
+				if(!err){
+					if(objects.length<=0){
+						res.json({status: false, message: "No hay ningún servicio disponible cerca de ti. Intenta de nuevo en unos momentos."});
+					}
+					else{
+						utils.log("DeliveryItem/Near","Envío:",JSON.stringify(objects));
+						res.json({status: true, response: objects});
+					}
+				}
+				else{
+					res.json({status: false, error: err});
+				}
+			});
 		}
 		else{
-			res.json({status: false, error: err});
+			res.json({status: false, message: "Tienes más de "+maxServices+" activos."});
 		}
+		
 	});
 };
 exports.getByOverallStatus = function(req,res){
@@ -1826,7 +1837,6 @@ exports.deleteDeliveryItem = function(req,res){
 			}
 		}
 	});
-	
 };
 //////////////////////////////////
 //End of Messenger CRUD///////////
@@ -2096,16 +2106,18 @@ var browserAccountRedirect = function (req,res,data){
 	    $ = {};
 	if (/mobile/i.test(ua)){
 		console.log("Caso MOBILE");
+		res.redirect('mensajeria://email_verification?email='+data.email+'&type='+data.type);
 	}
 	
 	if (/like Mac OS X/.test(ua)) {
 		console.log("Caso MACOSX");
-	    res.redirect('doclinea://email_verification?email='+data.email+'&type='+data.type);
-	    return;
+	    res.redirect('http://'+webapp+'/#/account_activation/'+data.type+'/'+data.email);
+		return;
 	}
 	
 	if (/Android/.test(ua)){
 		console.log("Caso Android");
+	    res.redirect('mensajeria://email_verification?email='+data.email+'&type='+data.type);
 		return;
 	}
 	
@@ -2113,7 +2125,6 @@ var browserAccountRedirect = function (req,res,data){
 		console.log("Caso WEBOS");
 		return;
 	}
-	
 	if (/(Intel|PPC) Mac OS X/.test(ua)){
 		console.log("Caso INTEL PPC MACOSX");
 		res.redirect('http://'+webapp+'/#/account_activation/'+data.type+'/'+data.email);
@@ -2208,7 +2219,7 @@ var notifyEvent = function(type,inputObject,status){
 	if(type=="user"){
 		User.findOne({_id:inputObject.user_id}, function(err, object){
 			if(!object){
-				res.json({status:false, message:"not found"});
+				//res.json({status:false, message:"not found"});
 			}
 			else{
 				if(status == CONSTANTS.STATUS.SYSTEM.ACCEPTED){
@@ -2242,8 +2253,12 @@ var notifyEvent = function(type,inputObject,status){
 				notification.type = 'delivery';
 				notification.os = object.device.os;
 				notification.token = object.device.token;
-				notification.id = inputObject._id
-				push.send(notification);
+				notification.id = inputObject._id;
+				
+				if(notification.token && notification.token.length>1)
+					push.send(notification);
+				else
+					console.log("No hay token");
 			}
 		});
 	}
@@ -2263,29 +2278,36 @@ exports.passwordRedirect = function (req, res){
 	    $ = {};
 	
 	if (/mobile/i.test(ua)){
-	console.log("Caso Mobile");
+		console.log("Caso Mobile");
+		res.redirect('mensajeria://password_redirect?token='+req.params.token+'&type='+req.params.type+'&request='+req.params.request+'&email='+req.params.email);
+		return;
 	}
 	
 	if (/like Mac OS X/.test(ua)) {
 		console.log("Caso MACOSX");
-	    res.redirect('mensajeria://password_redirect?token='+req.params.token+'&type='+req.params.type+'&request='+req.params.request+'&email='+req.params.email);
+		res.redirect('http://'+webapp+'/#/NewPassword/'+req.params.token+'/'+req.params.type+'/'+req.params.request+'/'+req.params.email);
+		return;
 	}
 	
 	if (/Android/.test(ua)){
-		console.log("Caso Android");
+		res.redirect('mensajeria://password_redirect?token='+req.params.token+'&type='+req.params.type+'&request='+req.params.request+'&email='+req.params.email);
+		return;
 	}
 	
 	if (/webOS\//.test(ua)){
 		console.log("Caso WEBOS");
+		return;
 	}
 	
 	if (/(Intel|PPC) Mac OS X/.test(ua)){
 		console.log("Caso INTEL PPC MAC");
 		res.redirect('http://'+webapp+'/#/NewPassword/'+req.params.token+'/'+req.params.type+'/'+req.params.request+'/'+req.params.email);
+		return;
 	}
 	
 	if (/Windows NT/.test(ua)){
 		console.log("Caso Windows");
+		return;
 	}
 };
 /////////////////////////////////
