@@ -158,6 +158,7 @@ var DeliveryItemSchema= new mongoose.Schema({
 	messenger_id: {type: String, required:false},
 	messenger_info: {type: Object, required:false},
 	messenger_comments: {type: String, required:false},
+	abort_reason: String,
 	item_name : {type: String, required:false},
 	pickup_location : {type: {type: String}, 'coordinates':{type:[Number]}},
 	pickup_object: {type: Object, required:true},
@@ -688,8 +689,8 @@ exports.unFavMessenger = function(req,res){
 //Get Favorites
 exports.getFavorites = function(req,res){
 	/*Log*/utils.log("User/GetFavorites","Recibo:",JSON.stringify(req.body));
-	User.findOne({_id:req.params.user_id}, function(err,messengers){
-		if(!messengers){
+	User.findOne({_id:req.params.user_id}, function(err,user){
+		if(!user){
 			res.json({message:"No se encontró el usuario.", status:false});
 		}
 		else{
@@ -1270,7 +1271,7 @@ exports.getUserAborted = function(req,res){
 	if(req.params.sort){
 		sort = utils.isJson(req.params.sort) ? JSON.parse(req.params.sort):req.params.sort;
 	}
-	DeliveryItem.find({user_id:req.params.user_id, overall_status:'aborted'})
+	DeliveryItem.find({user_id:req.params.user_id, overall_status:CONSTANTS.OVERALLSTATUS.ABORTED})
 	.sort(sort.name)
 	.skip(sort.skip)
 	.limit(sort.limit)
@@ -1279,6 +1280,7 @@ exports.getUserAborted = function(req,res){
 			res.json({status: false, error: "not found"});
 		}
 		else{
+			utils.log("DeliveryItem/GetUserAborted/","Envío:",JSON.stringify(objects));
 			res.json({status: true, response: objects});
 		}
 	});
@@ -1473,6 +1475,7 @@ exports.rateDeliveryItem = function(req,res){
 		}
 	});
 };
+
 //Experiment
 exports.nextStatus = function(req,res){
 	//Este método identifica el estado del pedido y continúa con el estado siguiente
@@ -1736,7 +1739,7 @@ exports.abortDeliveryItem = function(req,res){
 	//El usuario no podrá abortar ningún delivery
 	utils.log("DeliveryItem/Abort/"+req.params.delivery_id,"Recibo:",JSON.stringify(req.body));
 	//Verificamos que llegue el objeto mensajero con un id
-	if(req.body.messenger_info._id){
+	if(req.body.messenger_info){
 		req.body.messenger_info = utils.isJson(req.body.messenger_info) ? 
 										JSON.parse(req.body.messenger_info): 
 										req.body.messenger_info ;
@@ -1764,7 +1767,7 @@ exports.abortDeliveryItem = function(req,res){
 					object.messenger_id = '';
 					object.save(function(err, result){
 						notifyEvent("user",result,CONSTANTS.STATUS.SYSTEM.CANCELLED);
-					   	utils.log("DeliveryItem/Abort","Envío:",JSON.stringify(object));
+					   	utils.log("DeliveryItem/Cancel","Envío:",JSON.stringify(object));
 							res.json({
 										status:true, 
 										message:"DeliveryItem ahora está available para el usuario y no está asignado a ningún mensajero.", 
@@ -1773,9 +1776,9 @@ exports.abortDeliveryItem = function(req,res){
 					});
 				}
 				else{
-					object.status == CONSTANTS.OVERALLSTATUS.ABORTED;
+					object.status = CONSTANTS.STATUS.SYSTEM.ABORTED;
 					object.overall_status = CONSTANTS.OVERALLSTATUS.ABORTED;
-					object.messenger_info.abort_reason = req.body.messenger_info.abort_reason;
+					object.abort_reason = req.body.messenger_info.abort_reason;
 					object.save(function(err, result){
 						notifyEvent("user",result,CONSTANTS.STATUS.SYSTEM.ABORTED);
 					   	utils.log("DeliveryItem/Abort","Envío:",JSON.stringify(object));
@@ -1788,6 +1791,40 @@ exports.abortDeliveryItem = function(req,res){
 				}
 		   	}
 	});
+};
+exports.restartDeliveryItem = function(req,res){
+	DeliveryItem.findOne({
+							_id:req.params.delivery_id, 
+							user_id:req.body.user_id
+						}, 
+	   function(err,object){
+		   	if(!object){
+			   	res.json({status: false, error: "No se encontró el DeliveryItem"});
+		   	}
+		   	else{
+			   	if(object.overall_status == CONSTANTS.OVERALLSTATUS.ABORTED){
+					object.status = CONSTANTS.STATUS.SYSTEM.AVAILABLE;
+					object.overall_status = CONSTANTS.OVERALLSTATUS.REQUESTED;
+					object.messenger_info = {};
+					object.messenger_id = '';
+					object.images = [];
+					object.save(function(err, result){
+					   	utils.log("DeliveryItem/Restart","Envío:",JSON.stringify(object));
+							res.json({
+										status:true, 
+										message:"DeliveryItem ahora está available para el usuario y no está asignado a ningún mensajero.", 
+										response:result
+									});
+					});
+				}
+				else{
+					res.json({
+								status:false, 
+								message:"No se encontró el DeliveryItem", 
+							});
+				}
+		   	}
+	});	
 };
 //Delete
 exports.deleteDeliveryItem = function(req,res){
@@ -1948,6 +1985,14 @@ exports.sendEmailVerification = function(req,res){
 //////////////////////////////////
 //Image Uploader*//
 var uploadImage = function(file,delivery_object,response){
+	
+	var amazonUrl = '';
+	var tmp_path_image_url = file.path;
+	var findSpace = ' ';
+	var regSpace = new RegExp(findSpace, 'g');
+	var findSpecial = '[\\+*?\\[\\^\\]$(){}=!<>|:]';
+	var regSpecial = new RegExp(findSpecial, 'g');
+	
 	//Verificamos que llegue archivo adjunto
 	if(!file){
 		response.json({
@@ -1959,7 +2004,6 @@ var uploadImage = function(file,delivery_object,response){
 	
 	//Guardamos el path de la imagen en una variable
 	//Y verificamos su extensión para proceder con el guardado adecuado
-	var tmp_path_image_url = file.path;
     var extension =".jpg";
     if(file.type=="image/png"){
     	extension=".png";
@@ -1980,7 +2024,18 @@ var uploadImage = function(file,delivery_object,response){
 				//Si no hay error en el proceso de guardado local
 				//Procedemos a subir el archivo al bucket con una ruta definida coherentemente
 				//Esta ruta se genera con los parámetros de entrada de la función
-				var req = client.put(delivery_object.user_info.email+'/'+delivery_object.item_name+'/'+delivery_object.status+"/"+file.name, {
+				
+				
+				amazonUrl = delivery_object.user_info.email+'/'+
+							delivery_object.item_name+'/'+
+							delivery_object.status+"/"+
+							file.name;
+				
+				amazonUrl = amazonUrl.
+								replace(regSpace, '').
+								replace(regSpecial, '');
+				
+				var req = client.put(amazonUrl, {
 					      'Content-Length': stat.size,
 					      'Content-Type': file.type,
 					      'x-amz-acl': 'public-read'
@@ -2028,6 +2083,13 @@ var uploadImage = function(file,delivery_object,response){
     }
 }
 var uploadProfilePic = function(file,messenger,response){
+	var amazonUrl = '';
+	var tmp_path_image_url = file.path;
+	var findSpace = ' ';
+	var regSpace = new RegExp(findSpace, 'g');
+	var findSpecial = '[\\+*?\\[\\^\\]$(){}=!<>|:]';
+	var regSpecial = new RegExp(findSpecial, 'g');
+	
 	//Verificamos que llegue archivo adjunto
 	if(!file){
 		response.json({
@@ -2060,7 +2122,16 @@ var uploadProfilePic = function(file,messenger,response){
 				//Si no hay error en el proceso de guardado local
 				//Procedemos a subir el archivo al bucket con una ruta definida coherentemente
 				//Esta ruta se genera con los parámetros de entrada de la función
-				var req = client.put("messengers"+'/'+messenger.email+'/'+"profile"+'/'+file.name, {
+				amazonUrl = "messengers"+'/'+
+							messenger.email+'/'+
+							"profile"+'/'+
+							file.name;
+				
+				amazonUrl = amazonUrl.
+								replace(regSpace, '').
+								replace(regSpecial, '');
+								
+				var req = client.put(amazonUrl, {
 					      'Content-Length': stat.size,
 					      'Content-Type': file.type,
 					      'x-amz-acl': 'public-read'

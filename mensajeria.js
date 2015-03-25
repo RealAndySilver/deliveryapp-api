@@ -151,6 +151,7 @@ app.put('/api_1.0/DeliveryItem/NextStatus/:delivery_id', model.nextStatus);
 app.put('/api_1.0/DeliveryItem/LastStatus/:delivery_id', model.lastStatus);
 ////////////
 app.put('/api_1.0/DeliveryItem/Abort/:delivery_id', model.abortDeliveryItem);
+app.put('/api_1.0/DeliveryItem/Restart/:delivery_id', model.restartDeliveryItem);
 //DeliveryItem Delete APIs
 app.delete('/api_1.0/DeliveryItem/Delete/:delivery_id/:user_id', model.deleteDeliveryItem);
 //Rate
