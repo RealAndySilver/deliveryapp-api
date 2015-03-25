@@ -174,6 +174,7 @@ var DeliveryItemSchema= new mongoose.Schema({
 	overall_status : {type: String, required:true}, //requested,started, finished
 	status : {type: String, required:true}, //available, accepted, in-transit, delivered, returning, returned, aborted
 	pickup_time : {type: Date, required:false},
+	estimated : {type: Date, required:false},
 	images: {type: Array, required:false},
 	rated : {type: Boolean, required:false},
 	rate_object : {type: Object, required:false},
@@ -1509,6 +1510,12 @@ exports.nextStatus = function(req,res){
 				   	//en la aplicación de usuario
 					object.messenger_id = req.body.messenger_info._id;
 			   		object.messenger_info = req.body.messenger_info;
+			   		
+			   		if(req.body.messenger_info.time == 0)
+			   			object.estimated = object.pickup_time;
+			   		else
+			   			object.estimated = utils.addMinutes(req.body.messenger_info.time);
+			   			
 			   		//También modificamos el estado del pedido para que este no sea
 			   		//mostrado como disponible a otros mensajeros
 			   		object.status = CONSTANTS.STATUS.SYSTEM.ACCEPTED;

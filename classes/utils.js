@@ -37,3 +37,9 @@ exports.convertInGeoObject = function (location){
 exports.log = function(service_name, request, json){
 	console.log(new Date().toISOString()+": "+service_name.blue +" "+ request.green+" "+ json.cyan);	
 };
+
+exports.addMinutes = function (minutes) {
+	var date = new Date();
+	//currentTime.setMinutes(currentTime.getMinutes() + minutes);
+    return new Date(date.getTime() + minutes*60000);
+}
