@@ -1987,7 +1987,6 @@ exports.sendEmailVerification = function(req,res){
 var uploadImage = function(file,delivery_object,response){
 	
 	var amazonUrl = '';
-	var tmp_path_image_url = file.path;
 	var findSpace = ' ';
 	var regSpace = new RegExp(findSpace, 'g');
 	var findSpecial = '[\\+*?\\[\\^\\]$(){}=!<>|:]';
@@ -2084,7 +2083,6 @@ var uploadImage = function(file,delivery_object,response){
 }
 var uploadProfilePic = function(file,messenger,response){
 	var amazonUrl = '';
-	var tmp_path_image_url = file.path;
 	var findSpace = ' ';
 	var regSpace = new RegExp(findSpace, 'g');
 	var findSpecial = '[\\+*?\\[\\^\\]$(){}=!<>|:]';
