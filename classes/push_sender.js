@@ -1,4 +1,6 @@
 var apn = require ('apn');
+var gcm = require('node-gcm');
+
 var CONSTANTS = {
 	OS : {
 		IOS : 'iOS',
@@ -8,8 +10,8 @@ var CONSTANTS = {
 
 exports.send = function (notification){
 	var development = true;
-	var certificate = 'cert';
-	var key = 'key';
+	var certificate = notification.cert;
+	var key = notification.key;
 	
 	var iosPushOptions = {
 		extension :  '',
@@ -61,55 +63,46 @@ exports.send = function (notification){
 		pushToManyIOS();
 	}				
 	else if(notification.os === CONSTANTS.OS.ANDROID){
-		PushToken.find({app_id:req.body.app_id, device_brand:"Android"}, function(err,pushtokens){
-			if(pushtokens.length<=0){
-			}
-			else{
-				// or with object values
-				App.findOne({_id:req.body.app_id}, function(err,app){
-				if(app){
-						var message = new gcm.Message({
-						    collapseKey: 'demo',
-						    delayWhileIdle: true,
-						    timeToLive: 3,
-						    data: {
-						        key1: 'message1',
-						        key2: 'message2'
-						    }
-						});
-						
-						var sender = new gcm.Sender(app.gcm_apikey);
-						var registrationIds = [];
-						
-						// OPTIONAL
-						// add new key-value in data object
-						//message.addDataWithKeyValue('key1','message1');
-						//message.addDataWithKeyValue('key2','message2');
-						
-						// or add a data object
-						message.addDataWithObject({
-						    message: req.body.message,
-						    app_name: app.name,
-						});
-						
-						message.collapseKey = 'demo';
-						message.delayWhileIdle = true;
-						message.timeToLive = 3;
-						// END OPTION
-						
-						// At least one required
-						for(var i=0;i<pushtokens.length;i++){
-							registrationIds.push(pushtokens[i].push_token);		
-						}					
-						/**
-						 * Params: message-literal, registrationIds-array, No. of retries, callback-function
-						 **/
-						sender.send(message, registrationIds, 4, function (err, result) {
-						    console.log(result);
-						});
-					}
-				});
-			}
+		var message = new gcm.Message({
+		    collapseKey: 'demo',
+		    delayWhileIdle: true,
+		    timeToLive: 3,
+		    data: {
+		        key1: 'message1',
+		        key2: 'message2'
+		    }
+		});
+		
+		var sender = new gcm.Sender(notification.gcmkey);
+		var registrationIds = [];
+		
+		// OPTIONAL
+		// add new key-value in data object
+		//message.addDataWithKeyValue('key1','message1');
+		//message.addDataWithKeyValue('key2','message2');
+		
+		// or add a data object
+		message.addDataWithObject({
+		    message : notification.message,
+		    payload : {
+							'action': notification.action,
+							'type' : notification.type,
+							'id' : notification.id
+						}
+		});
+		
+		message.collapseKey = 'demo';
+		message.delayWhileIdle = true;
+		message.timeToLive = 3;
+		// END OPTION
+		
+		// At least one required
+		registrationIds.push(notification.token);		
+		/**
+		 * Params: message-literal, registrationIds-array, No. of retries, callback-function
+		 **/
+		sender.send(message, registrationIds, 4, function (err, result) {
+		    console.log(result);
 		});
 	}
 };

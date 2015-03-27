@@ -65,13 +65,23 @@ var CONSTANTS = {
 	OS : {
 		IOS : 'iOS',
 		ANDROID : 'android'
+	},
+	GCM : {
+		APIKEY : {
+			USER : 'AIzaSyAU632zAjuf8UaRLYRG6B5LpOUKhKr2Sx4',
+			MESSENGER : 'AIzaSyD_sfXqbP8vFsuMu7wTUeqDgqvl3cWXesM'
+		}
+	},
+	APNS : {
+		CERT : 'cert',
+		KEY : 'key'
 	}
 };
 //Producción
 //var hostname = "192.241.187.135:2000";
 var webapp = "192.241.187.135:3000"
 //Dev
-var hostname = "192.168.0.44:2000";
+var hostname = "192.168.0.21:2000";
 //var webapp = "192.241.187.135:3000";
 
 //////////////////////////////////
@@ -802,7 +812,7 @@ exports.authenticateMessenger = function(req,res){
 				if(req.body.device_info){
 					//En caso que recibamos información sobre el dispositivo
 					//procedemos a parsear esta información en un formato json conocido
-					/*Log*/utils.log("Messenger/Login","Envío:",JSON.stringify(user));
+					/*Log*/utils.log("Messenger/Login","Envío:",JSON.stringify(messenger));
 					req.body.device_info = utils.isJson(req.body.device_info) ? JSON.parse(req.body.device_info): req.body.device_info ;
 					
 					//Procedemos a guardar esta información dentro del documento
@@ -813,7 +823,7 @@ exports.authenticateMessenger = function(req,res){
 								//Verificamos que el mensajero ya haya verificado su cuenta
 								//por medio del email que enviamos
 								if(messenger.email_confirmation){
-									/*Log*/utils.log("User/Login","Envío:",JSON.stringify(messenger));
+									/*Log*/utils.log("Messenger/Login","Envío:",JSON.stringify(messenger));
 									res.json({status: true, response: messenger, message:"Autenticado correctamente, pero no se pudo agregar el dispositivo"});
 								}
 								//Si no está verificado negamos el login
@@ -974,7 +984,7 @@ exports.newPasswordMessenger = function(req,res){
 		else{
 			object.password_recover.status = false;
 			object.password_recover.token = "";
-			object.password = security.encrypt(req.body.new_password);
+			object.password = security.encrypt(req.body.password);
 			object.save(function(err, result){
 				if(err){
 					
@@ -982,7 +992,7 @@ exports.newPasswordMessenger = function(req,res){
 				else{
 					if(result){
 						//mail.send("Clave Cambiada Con Exito");
-						mail.send("Clave Cambiada Con Exito!", "Hola "+object.name+". <br>Tu contraseña ha sido cambiada con éxito. Ingresa ya a Mensajería:<br> <a href='http://mensajeria.com'> Mensajería </a>", messenger.email);
+						mail.send("Clave Cambiada Con Exito!", "Hola "+object.name+". <br>Tu contraseña ha sido cambiada con éxito. Ingresa ya a Mensajería:<br> <a href='http://mensajeria.com'> Mensajería </a>", object.email);
 						res.json({status: true, response: result});
 					}
 				}
@@ -1331,7 +1341,7 @@ exports.acceptDeliveryItem = function(req,res){
 		   		utils.log("DeliveryItem/Accept","Envío:",JSON.stringify(object));
 		   		Messenger.findOneAndUpdate({_id:req.body.messenger_info._id},
 		   									{$inc:{"stats.accepted_services":1}}, 
-		   									function(err, user){
+		   									function(err, messenger){
 			   		res.json({status:true, message:"DeliveryItem aceptado exitosamente.", response:object});
 
 			   	});
@@ -1773,13 +1783,18 @@ exports.abortDeliveryItem = function(req,res){
 					object.messenger_info = {};
 					object.messenger_id = '';
 					object.save(function(err, result){
-						notifyEvent("user",result,CONSTANTS.STATUS.SYSTEM.CANCELLED);
-					   	utils.log("DeliveryItem/Cancel","Envío:",JSON.stringify(object));
-							res.json({
-										status:true, 
-										message:"DeliveryItem ahora está available para el usuario y no está asignado a ningún mensajero.", 
-										response:result
-									});
+						Messenger.findOneAndUpdate({_id:req.body.messenger_info._id},
+	   									{$inc:{"stats.cancelled_services":1}}, 
+	   									function(err, user){
+		   									notifyEvent("user",result,CONSTANTS.STATUS.SYSTEM.CANCELLED);
+		   									utils.log("DeliveryItem/Cancel","Envío:",JSON.stringify(object));
+		   									res.json({
+												status:true, 
+												message:"DeliveryItem ahora está available para el usuario y no está asignado a ningún mensajero.", 
+												response:result
+											});
+	   					});
+						
 					});
 				}
 				else{
@@ -1787,13 +1802,17 @@ exports.abortDeliveryItem = function(req,res){
 					object.overall_status = CONSTANTS.OVERALLSTATUS.ABORTED;
 					object.abort_reason = req.body.messenger_info.abort_reason;
 					object.save(function(err, result){
-						notifyEvent("user",result,CONSTANTS.STATUS.SYSTEM.ABORTED);
-					   	utils.log("DeliveryItem/Abort","Envío:",JSON.stringify(object));
-							res.json({
-										status:true, 
-										message:"Servicio cancelado por mensajero. Razón: "+req.body.messenger_info.abort_reason, 
-										response:result
-							});
+						Messenger.findOneAndUpdate({_id:req.body.messenger_info._id},
+	   									{$inc:{"stats.aborted_services":1}}, 
+	   									function(err, user){
+		   									notifyEvent("user",result,CONSTANTS.STATUS.SYSTEM.ABORTED);
+										   	utils.log("DeliveryItem/Abort","Envío:",JSON.stringify(object));
+											res.json({
+														status:true, 
+														message:"Servicio cancelado por mensajero. Razón: "+req.body.messenger_info.abort_reason, 
+														response:result
+											});
+	   					});
 					});
 				}
 		   	}
@@ -2289,7 +2308,9 @@ var notifyEvent = function(type,inputObject,status){
 		message : '',
 		action : status,
 		os : '',
-		token : ''
+		token : '',
+		key : CONSTANTS.APNS.KEY,
+		cert : CONSTANTS.APNS.CERT
 	};
 	var messageintro = "Tu pedido ";
 	if(type=="user"){
@@ -2330,6 +2351,8 @@ var notifyEvent = function(type,inputObject,status){
 				notification.os = object.device.os;
 				notification.token = object.device.token;
 				notification.id = inputObject._id;
+				notification.type = 'user';
+				notification.gcmkey = CONSTANTS.GCM.APIKEY.USER;
 				
 				if(notification.token && notification.token.length>1)
 					push.send(notification);
@@ -2339,6 +2362,7 @@ var notifyEvent = function(type,inputObject,status){
 		});
 	}
 	else if(type == "messenger"){	
+		notification.gcmkey = CONSTANTS.GCM.APIKEY.MESSENGER;
 	}
 };
 /////////////////////////////////
@@ -2355,7 +2379,10 @@ exports.passwordRedirect = function (req, res){
 	
 	if (/mobile/i.test(ua)){
 		console.log("Caso Mobile");
-		res.redirect('mensajeria://password_redirect?token='+req.params.token+'&type='+req.params.type+'&request='+req.params.request+'&email='+req.params.email);
+		if(req.params.type == "user")
+			res.redirect('mensajeria://password_redirect?token='+req.params.token+'&type='+req.params.type+'&request='+req.params.request+'&email='+req.params.email);
+		else
+			res.redirect('mensajeria-m://password_redirect?token='+req.params.token+'&type='+req.params.type+'&request='+req.params.request+'&email='+req.params.email);
 		return;
 	}
 	
