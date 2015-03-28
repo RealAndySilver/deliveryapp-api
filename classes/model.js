@@ -1125,6 +1125,7 @@ utils.log("Delivery","Recibo:",JSON.stringify(req.body));
 exports.getDeliveryItemByID = function(req,res){
 	//Esta función expone un servicio para buscar un DeliveryItem por id
 	DeliveryItem.findOne({_id:req.params.delivery_id},exclude,function(err,object){
+		console.log("query: "+JSON.stringify(object));
 		if(!object){
 			res.json({status: false, error: "not found"});
 		}
@@ -2306,7 +2307,7 @@ var notifyEvent = function(type,inputObject,status){
 		status : '',
 		type : '',
 		message : '',
-		action : status,
+		action : 'delivery',
 		os : '',
 		token : '',
 		key : CONSTANTS.APNS.KEY,
@@ -2353,6 +2354,11 @@ var notifyEvent = function(type,inputObject,status){
 				notification.id = inputObject._id;
 				notification.type = 'user';
 				notification.gcmkey = CONSTANTS.GCM.APIKEY.USER;
+				notification.payload = {
+											'action': notification.action,
+											'u_type' : notification.type,
+											'id' : notification.id
+										};
 				
 				if(notification.token && notification.token.length>1)
 					push.send(notification);

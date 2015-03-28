@@ -53,11 +53,7 @@ exports.send = function (notification){
 			note.badge = 1;
 			note.sound = "ping.aiff";
 			note.alert = notification.message;
-			note.payload = {
-							'action': notification.action,
-							'type' : notification.type,
-							'id' : notification.id
-						};
+			note.payload = notification.payload;
 		    service.pushNotification(note, notification.token);
 		}
 		pushToManyIOS();
@@ -84,11 +80,7 @@ exports.send = function (notification){
 		// or add a data object
 		message.addDataWithObject({
 		    message : notification.message,
-		    payload : {
-							'action': notification.action,
-							'type' : notification.type,
-							'id' : notification.id
-						}
+		    payload : notification.payload
 		});
 		
 		message.collapseKey = 'demo';
