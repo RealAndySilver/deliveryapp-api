@@ -1802,6 +1802,7 @@ exports.abortDeliveryItem = function(req,res){
 					object.status = CONSTANTS.STATUS.SYSTEM.ABORTED;
 					object.overall_status = CONSTANTS.OVERALLSTATUS.ABORTED;
 					object.abort_reason = req.body.messenger_info.abort_reason;
+					object.estimated = null;
 					object.save(function(err, result){
 						Messenger.findOneAndUpdate({_id:req.body.messenger_info._id},
 	   									{$inc:{"stats.aborted_services":1}}, 
@@ -2030,6 +2031,7 @@ var uploadImage = function(file,delivery_object,response){
 	
 	//Guardamos el path de la imagen en una variable
 	//Y verificamos su extensión para proceder con el guardado adecuado
+    var tmp_path_image_url = file.path;
     var extension =".jpg";
     if(file.type=="image/png"){
     	extension=".png";
@@ -2247,6 +2249,10 @@ var emailVerification = function (req,data,type){
 };
 //Price Calculator
 exports.getPrice = function (req,res){
+	var message = "";
+	var result = null;
+	var parsedOrigin = "";
+	var parsedDestination = "";
 	distance.get(
 	{
 	  index: 1,
@@ -2266,10 +2272,10 @@ exports.getPrice = function (req,res){
 				);
 		}
 		else{
-			var message = "Valor a pagar aproximado: $";
-			var result = data.distanceValue/1000 *1000;
-			var parsedOrigin = data.origin.split(",");
-			var parsedDestination = data.destination.split(",");
+			message = "Valor a pagar aproximado: $";
+			result = data.distanceValue/1000 *1000;
+			parsedOrigin = data.origin.split(",");
+			parsedDestination = data.destination.split(",");
 			if(parsedOrigin[1] == parsedDestination[1]){
 				if(result<5000){
 				result = 5000;
