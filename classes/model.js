@@ -941,7 +941,6 @@ exports.updateProfilePic = function(req,res){
 			res.json({status: false, error: "not found"});
 		}
 		else{
-			/*Log*/utils.log("DeliveryItem/AddPic/"+req.params.delivery_id,"Envio:",JSON.stringify(object));
 			uploadProfilePic(req.files.image,object,res);
 		}
 	});
@@ -2181,6 +2180,7 @@ var uploadProfilePic = function(file,messenger,response){
 							response.json({status: false, error: "Error al guardar"});
 						}
 						else{
+							/*Log*/utils.log("Messenger/AddPic/"+object._id,"Envio:",JSON.stringify(object));
 							response.json({status: true, response: object});
 						}
 					});
@@ -2276,7 +2276,7 @@ exports.getPrice = function (req,res){
 			result = data.distanceValue/1000 *1000;
 			parsedOrigin = data.origin.split(",");
 			parsedDestination = data.destination.split(",");
-			if(parsedOrigin[1] == parsedDestination[1]){
+			//if(parsedOrigin[1] == parsedDestination[1]){
 				if(result<5000){
 				result = 5000;
 				}
@@ -2292,8 +2292,9 @@ exports.getPrice = function (req,res){
 						destinationCity:parsedDestination
 					}
 				);
-			}
-			else{
+			/*}
+			
+else{
 				res.json(
 					{
 						status: false, 
@@ -2303,6 +2304,7 @@ exports.getPrice = function (req,res){
 					}
 				);
 			}
+*/
 		}
 	});
 };
