@@ -2357,7 +2357,14 @@ var notifyEvent = function(type,inputObject,status){
 					notification.message = messageintro+"'"+ inputObject.item_name+"'"+" ha sido cancelado por el mensajero."
 				}
 				notification.type = 'delivery';
-				notification.os = object.device.os;
+				if(object.device && object.device.os){
+					notification.os = object.device.os;
+				}
+				else{
+					notification.os = object.device.os ? object.device.os:'no';
+					return;
+				}
+				notification.os = object.device.os ? object.device.os:'no';
 				notification.token = object.device.token;
 				notification.id = inputObject._id;
 				notification.type = 'user';
