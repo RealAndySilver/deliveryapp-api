@@ -2361,7 +2361,7 @@ var notifyEvent = function(type,inputObject,status){
 					notification.os = object.device.os;
 				}
 				else{
-					notification.os = object.device.os ? object.device.os:'no';
+					notification.os = 'no';
 					return;
 				}
 				notification.os = object.device.os ? object.device.os:'no';
