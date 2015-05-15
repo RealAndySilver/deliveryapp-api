@@ -1523,7 +1523,7 @@ exports.changeStatus = function(req,res){
 										req.body.messenger_info ;
 	}
 	else{
-		res.json({status: false, error: "No se encontró el objeto mensajero"});
+		res.json({status: false, error: "No se incluyó el messenger_info."});
 		return;
 	}
 	//Procedemos a actualizar el DeliveryItem
@@ -1537,7 +1537,22 @@ exports.changeStatus = function(req,res){
 		   	else{
 			   	//Este caso es cuando el usuario crea el pedido y este aún no ha sido aceptado
 			   	//Por ningún mensajero
-			   	if(req.params.status == CONSTANTS.STATUS.SYSTEM.ACCEPTED){
+			   	if(req.params.status == CONSTANTS.STATUS.SYSTEM.AVAILABLE){
+					object.status = CONSTANTS.STATUS.SYSTEM.AVAILABLE;
+					object.overall_status = CONSTANTS.OVERALLSTATUS.REQUESTED;
+					object.messenger_info = {};
+					object.messenger_id = '';
+					object.images = [];
+					object.save(function(err, result){
+					   	utils.log("DeliveryItem/Restart","Envío:",JSON.stringify(object));
+							res.json({
+										status:true, 
+										message:"DeliveryItem ahora está available para el usuario y no está asignado a ningún mensajero.", 
+										response:result
+									});
+					});
+				}
+			   	else if(req.params.status == CONSTANTS.STATUS.SYSTEM.ACCEPTED){
 				   	//Este es el primer caso para la aceptación del servicio
 				   	//El objeto delivery tendrá ahora el id del mensajero
 				   	//y el objeto mensajero en su totalidad para ser mostrado
@@ -1577,6 +1592,7 @@ exports.changeStatus = function(req,res){
 				   	//También modificamos el estado del pedido para que este no sea
 			   		//mostrado como disponible a otros mensajeros
 				   	object.status = CONSTANTS.STATUS.SYSTEM.INTRANSIT;
+			   		object.overall_status = CONSTANTS.OVERALLSTATUS.STARTED;
 				   	object.save(function(err, result){
 				   		utils.log("DeliveryItem/InTransit","Envío:",JSON.stringify(object));
 				   		notifyEvent("user",result,object.status);
@@ -1589,6 +1605,7 @@ exports.changeStatus = function(req,res){
 					
 				else if(req.params.status == CONSTANTS.STATUS.SYSTEM.RETURNING){
 					object.status = CONSTANTS.STATUS.SYSTEM.RETURNING;
+			   		object.overall_status = CONSTANTS.OVERALLSTATUS.STARTED;
 					object.save(function(err, result){
 					notifyEvent("user",result,object.status);
 				   	utils.log("DeliveryItem/Returning","Envío:",JSON.stringify(object));
@@ -1641,6 +1658,25 @@ exports.changeStatus = function(req,res){
    						});
 					});
 			   	}
+			   	else if(req.params.status = CONSTANTS.STATUS.SYSTEM.ABORTED){
+					object.status = CONSTANTS.STATUS.SYSTEM.ABORTED;
+					object.overall_status = CONSTANTS.OVERALLSTATUS.ABORTED;
+					object.abort_reason = req.body.messenger_info.abort_reason;
+					object.estimated = null;
+					object.save(function(err, result){
+						Messenger.findOneAndUpdate({_id:req.body.messenger_info._id},
+						{$inc:{"stats.aborted_services":1}}, 
+						function(err, user){
+							notifyEvent("user",result,CONSTANTS.STATUS.SYSTEM.ABORTED);
+						   	utils.log("DeliveryItem/Abort","Envío:",JSON.stringify(object));
+							res.json({
+									status:true, 
+									message:"Servicio cancelado por mensajero. Razón: "+req.body.messenger_info.abort_reason, 
+									response:result
+							});
+	   					});
+					});
+				}
 			   	else{
 				   	res.json({status:false, message:"El status: "+req.params.status+' no existe.'});
 			   	}
