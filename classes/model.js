@@ -1641,6 +1641,9 @@ exports.changeStatus = function(req,res){
    						});
 					});
 			   	}
+			   	else{
+				   	res.json({status:false, message:"El status: "+req.params.status+' no existe.'});
+			   	}
 		   	}
 	});
 };
