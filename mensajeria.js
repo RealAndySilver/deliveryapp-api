@@ -142,10 +142,14 @@ app.get('/api_1.0/DeliveryItems/:sort?', model.getAllDeliveryItems);
 app.get('/api_1.0/DeliveryItems/OverallStatus/:overall_status/:messenger_id/:sort?', model.getByOverallStatus);
 //DeliveryItem Update APIs
 app.put('/api_1.0/DeliveryItem/AddPic/:delivery_id', model.addPicToDeliveryItem);
-//DeliveryItem Messenger Only Update APIs
-app.put('/api_1.0/DeliveryItem/Accept/:delivery_id', model.acceptDeliveryItem);
-app.put('/api_1.0/DeliveryItem/InTransit/:delivery_id', model.inTransitDeliveryItem);
-app.put('/api_1.0/DeliveryItem/Deliver/:delivery_id', model.deliverDeliveryItem);
+//DeliveryItem Messenger Status Updates APIs
+app.put('/api_1.0/DeliveryItem/ChangeStatus/Accept/:delivery_id', model.changeStatusAccept);
+app.put('/api_1.0/DeliveryItem/ChangeStatus/InTransit/:delivery_id', model.changeStatusInTransit);
+app.put('/api_1.0/DeliveryItem/ChangeStatus/Delivered/:delivery_id', model.changeStatusDelivered);
+app.put('/api_1.0/DeliveryItem/ChangeStatus/Returning/:delivery_id', model.changeStatusReturning);
+app.put('/api_1.0/DeliveryItem/ChangeStatus/Returned/:delivery_id', model.changeStatusReturned);
+app.put('/api_1.0/DeliveryItem/ChangeStatus/Status/:status/:delivery_id', model.changeStatus);
+
 //Experiment
 app.put('/api_1.0/DeliveryItem/NextStatus/:delivery_id', model.nextStatus);
 app.put('/api_1.0/DeliveryItem/LastStatus/:delivery_id', model.lastStatus);

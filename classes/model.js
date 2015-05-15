@@ -1310,76 +1310,13 @@ exports.addPicToDeliveryItem = function(req,res){
 		}
 	});
 };
-//DeliveryItem Messenger Only Update
-exports.acceptDeliveryItem = function(req,res){
-	utils.log("DeliveryItem/Accept/"+req.params.delivery_id,"Recibo:",JSON.stringify(req.body));
-	
+//DeliveryItem Messenger Status Update
+exports.changeStatusAccept = function(req,res){
+	//Este método identifica el estado del pedido y continúa con el estado siguiente
+	//de manera automática
+	utils.log("DeliveryItem/Status/Accept/"+req.params.delivery_id,"Recibo:",JSON.stringify(req.body));
 	//Verificamos que llegue el objeto mensajero con un id
-	if(req.body.messenger_info._id){
-		req.body.messenger_info = utils.isJson(req.body.messenger_info) ? 
-										JSON.parse(req.body.messenger_info): 
-										req.body.messenger_info ;
-	}
-	else{
-		res.json({status: false, error: "No se encontró el objeto mensajero"});
-		return;
-	}
-	//Procedemos a actualizar el DeliveryItem
-	//Este debe tener condicion de status: available y el id correcto
-	DeliveryItem.findOneAndUpdate({_id:req.params.delivery_id, status:CONSTANTS.STATUS.SYSTEM.AVAILABLE},
-	   {$set:{
-		   		messenger_id: req.body.messenger_info._id,
-		   		messenger_info: req.body.messenger_info,
-		   		status: CONSTANTS.STATUS.SYSTEM.ACCEPTED,
-		   		overall_status: CONSTANTS.OVERALLSTATUS.STARTED
-		   	}}, 
-	   function(err,object){
-		   	if(!object){
-			   	res.json({status: false, error: "No se encontró el DeliveryItem"});
-		   	}
-		   	else{
-		   		utils.log("DeliveryItem/Accept","Envío:",JSON.stringify(object));
-		   		Messenger.findOneAndUpdate({_id:req.body.messenger_info._id},
-		   									{$inc:{"stats.accepted_services":1}}, 
-		   									function(err, messenger){
-			   		res.json({status:true, message:"DeliveryItem aceptado exitosamente.", response:object});
-
-			   	});
-		   	}
-	});
-};
-exports.inTransitDeliveryItem = function(req,res){
-	utils.log("DeliveryItem/InTransit/"+req.params.delivery_id,"Recibo:",JSON.stringify(req.body));
-	//Verificamos que llegue el objeto mensajero con un id
-	if(req.body.messenger_info._id){
-		req.body.messenger_info = utils.isJson(req.body.messenger_info) ? 
-										JSON.parse(req.body.messenger_info): 
-										req.body.messenger_info ;
-	}
-	else{
-		res.json({status: false, error: "No se encontró el objeto mensajero"});
-		return;
-	}
-	//Procedemos a actualizar el DeliveryItem
-	//Este debe tener condicion de status: accepted y el id correcto del delivery y el mensajero
-	DeliveryItem.findOneAndUpdate({_id:req.params.delivery_id, status:CONSTANTS.STATUS.SYSTEM.ACCEPTED, messenger_id:req.body.messenger_info._id},
-	   {$set:{
-		   		status: "in-transit",
-		   	}}, 
-	   function(err,object){
-		   	if(!object){
-			   	res.json({status: false, error: "No se encontró el DeliveryItem"});
-		   	}
-		   	else{
-		   		utils.log("DeliveryItem/InTransit","Envío:",JSON.stringify(object));
-			   	res.json({status:true, message:"DeliveryItem ahora está in-transit.", response:object});
-		   	}
-	});
-};
-exports.deliverDeliveryItem = function(req,res){
-	utils.log("DeliveryItem/Deliver/"+req.params.delivery_id,"Recibo:",JSON.stringify(req.body));
-	//Verificamos que llegue el objeto mensajero con un id
-	if(req.body.messenger_info._id){
+	if(req.body.messenger_info){
 		req.body.messenger_info = utils.isJson(req.body.messenger_info) ? 
 										JSON.parse(req.body.messenger_info): 
 										req.body.messenger_info ;
@@ -1391,67 +1328,323 @@ exports.deliverDeliveryItem = function(req,res){
 	//Procedemos a actualizar el DeliveryItem
 	//Este debe tener condicion de overall_status: started y 
 	//el id correcto del delivery y el mensajero
-	DeliveryItem.findOne({
-							_id:req.params.delivery_id, 
-							overall_status:started, 
-							messenger_id:req.body.messenger_info._id
-						}, 
+	DeliveryItem.findOne({_id:req.params.delivery_id}, 
 	   function(err,object){
 		   	if(!object){
 			   	res.json({status: false, error: "No se encontró el DeliveryItem"});
 		   	}
 		   	else{
-			   	//Verificamos que roundtrip sea positivo
-			   	//Este caso indica que el item después de entregado debe regresar
-			   	//al punto de partida
-				if(object.roundtrip){
-					//Si el item se encuentra en tránsito debemos setearlo como
-					//returning
-					if(object.status = "in-transit"){
-						object.status = CONSTANTS.STATUS.SYSTEM.RETURNING;
-						object.save(function(err, result){
-					   	utils.log("DeliveryItem/Deliver","Envío:",JSON.stringify(object));
-							res.json({
-										status:true, 
-										message:"DeliveryItem ahora está returning.", 
-										response:result
-									});
+			   	//Este caso es cuando el usuario crea el pedido y este aún no ha sido aceptado
+			   	//Por ningún mensajero
+			   
+				   	//Este es el primer caso para la aceptación del servicio
+				   	//El objeto delivery tendrá ahora el id del mensajero
+				   	//y el objeto mensajero en su totalidad para ser mostrado
+				   	//en la aplicación de usuario
+					object.messenger_id = req.body.messenger_info._id;
+			   		object.messenger_info = req.body.messenger_info;
+			   		
+			   		if(req.body.messenger_info.time == 0)
+			   			object.estimated = object.pickup_time;
+			   		else
+			   			object.estimated = utils.addMinutes(req.body.messenger_info.time);
+			   			
+			   		//También modificamos el estado del pedido para que este no sea
+			   		//mostrado como disponible a otros mensajeros
+			   		object.status = CONSTANTS.STATUS.SYSTEM.ACCEPTED;
+			   		object.overall_status = CONSTANTS.OVERALLSTATUS.STARTED;
+			   		//Procedemos a guardar con los datos modificados
+					object.save(function(err, result){
+						utils.log("DeliveryItem/Accept","Envío:",JSON.stringify(result));
+						notifyEvent("user",result,object.status);
+						Messenger.findOneAndUpdate({_id:req.body.messenger_info._id},
+		   									{$inc:{"stats.started_services":1}}, 
+		   									function(err, messenger){
+		   									res.json({
+			   											status:true, 
+			   											message:"DeliveryItem aceptado exitosamente.",
+			   											response:result
+			   										});
+
 						});
-					}
-					//Si el item se encuentra en tránsito debemos setearlo como
-					//returned y el overall_status se marca cómo finished
-					//este servicio ya está terminado y el motorizado cumplió
-					else if(object.status = CONSTANTS.STATUS.SYSTEM.RETURNING){
-						object.status = CONSTANTS.STATUS.SYSTEM.RETURNED;
-						object.overall_status = CONSTANTS.OVERALLSTATUS.FINISHED;
-						object.save(function(err, result){
-					   	utils.log("DeliveryItem/Deliver","Envío:",JSON.stringify(object));
-							res.json({
-										status:true, 
-										message:"DeliveryItem ahora está finished.", 
-										response:result
-									});
-						});
-					}
-				}
-				//Este caso indica que el item después de entregado NO debe regresar
-			   	//al punto de partida
-				else{
+					});
+					return;
+			   	}
+	});
+};
+exports.changeStatusInTransit = function(req,res){
+	utils.log("DeliveryItem/Status/InTransit/"+req.params.delivery_id,"Recibo:",JSON.stringify(req.body));
+	DeliveryItem.findOne({_id:req.params.delivery_id}, 
+	   function(err,object){
+		   	if(!object){
+			   	res.json({status: false, error: "No se encontró el DeliveryItem"});
+		   	}
+		   	else{
+				//También modificamos el estado del pedido para que este no sea
+		   		//mostrado como disponible a otros mensajeros
+			   	object.status = CONSTANTS.STATUS.SYSTEM.INTRANSIT;
+			   	object.save(function(err, result){
+			   		utils.log("DeliveryItem/InTransit","Envío:",JSON.stringify(object));
+			   		notifyEvent("user",result,object.status);
+			   		res.json({status:true, message:"DeliveryItem ahora está in-transit.", response:object});						});
+					return;
+			   	
+			}
+	});
+};
+exports.changeStatusDelivered = function(req,res){
+	utils.log("DeliveryItem/Status/Delivered/"+req.params.delivery_id,"Recibo:",JSON.stringify(req.body));
+	if(req.body.messenger_info){
+		req.body.messenger_info = utils.isJson(req.body.messenger_info) ? 
+										JSON.parse(req.body.messenger_info): 
+										req.body.messenger_info ;
+	}
+	else{
+		res.json({status: false, error: "No se encontró el objeto mensajero"});
+		return;
+	}
+	DeliveryItem.findOne({_id:req.params.delivery_id}, 
+	   function(err,object){
+		   	if(!object){
+			   	res.json({status: false, error: "No se encontró el DeliveryItem"});
+		   	}
+		   	else{
+			   	if(object.roundtrip){
 					//El item se encuentra en tránsito, debemos setearlo como
 					//delivered y el overall_status se marca cómo finished
 					//este servicio ya está terminado y el motorizado cumplió
 					object.status = CONSTANTS.STATUS.SYSTEM.DELIVERED;
 					object.overall_status = CONSTANTS.OVERALLSTATUS.FINISHED;
 					object.save(function(err, result){
-					utils.log("DeliveryItem/Delivered","Envío:",JSON.stringify(object));
+						notifyEvent("user",result,object.status);
+						utils.log("DeliveryItem/Status/Delivered","Envío:",JSON.stringify(object));
+						Messenger.findOneAndUpdate({_id:req.body.messenger_info._id},
+										{$inc:{"stats.finished_services":1}}, 
+										function(err, user){
+	   									res.json({
+										status:true, 
+										message:"DeliveryItem ahora está" + object.status, 
+										response:result
+									});
+							});
+					});
+				}
+				else{
+					res.json({status: false, error: "Este DeliveryItem tiene roundtrip. Su estado no puede ser entregado. Debe ser Regresado / Returned"});
+				}
+			   	
+			}
+	});
+};
+exports.changeStatusReturning = function(req,res){
+	utils.log("DeliveryItem/Status/Returning/"+req.params.delivery_id,"Recibo:",JSON.stringify(req.body));
+	if(req.body.messenger_info){
+		req.body.messenger_info = utils.isJson(req.body.messenger_info) ? 
+										JSON.parse(req.body.messenger_info): 
+										req.body.messenger_info ;
+	}
+	else{
+		res.json({status: false, error: "No se encontró el objeto mensajero"});
+		return;
+	}
+	DeliveryItem.findOne({_id:req.params.delivery_id}, 
+	   function(err,object){
+		   	if(!object){
+			   	res.json({status: false, error: "No se encontró el DeliveryItem"});
+		   	}
+		   	else{
+			   	if(object.roundtrip){
+					object.status = CONSTANTS.STATUS.SYSTEM.RETURNING;
+					object.save(function(err, result){
+					notifyEvent("user",result,object.status);
+				   	utils.log("DeliveryItem/Status/Returning","Envío:",JSON.stringify(object));
 						res.json({
 									status:true, 
-									message:"DeliveryItem ahora está delivered.", 
+									message:"DeliveryItem ahora está" + object.status, 
 									response:result
 								});
 					});
 				}
-			   	res.json({status:true, message:"DeliveryItem ahora está in-transit.", response:object});
+				else{
+					res.json({status: false, error: "Este DeliveryItem tiene roundtrip. Su estado no puede ser diferente a Regresando."});
+				}
+			   	
+			}
+	});
+};
+exports.changeStatusReturned = function(req,res){
+	utils.log("DeliveryItem/Status/Returning/"+req.params.delivery_id,"Recibo:",JSON.stringify(req.body));
+	if(req.body.messenger_info){
+		req.body.messenger_info = utils.isJson(req.body.messenger_info) ? 
+										JSON.parse(req.body.messenger_info): 
+										req.body.messenger_info ;
+	}
+	else{
+		res.json({status: false, error: "No se encontró el objeto mensajero"});
+		return;
+	}
+	DeliveryItem.findOne({_id:req.params.delivery_id}, 
+	   function(err,object){
+		   	if(!object){
+			   	res.json({status: false, error: "No se encontró el DeliveryItem"});
+		   	}
+		   	else{
+			   	if(object.roundtrip){
+					object.status = CONSTANTS.STATUS.SYSTEM.RETURNED;
+					object.overall_status = CONSTANTS.OVERALLSTATUS.FINISHED;
+					object.save(function(err, result){
+						notifyEvent("user",result,object.status);
+					   	utils.log("DeliveryItem/Returned","Envío:",JSON.stringify(object));
+					   	Messenger.findOneAndUpdate({_id:req.body.messenger_info._id},
+									{$inc:{"stats.finished_services":1}}, 
+									function(err, user){
+									res.json({
+										status:true, 
+										message:"DeliveryItem ahora está" + object.status, 
+										response:result
+									});
+   						});
+					});
+				}
+				else{
+					res.json({status: false, error: "Este DeliveryItem tiene roundtrip. Su estado no puede ser diferente a Regresado."});
+				}
+			}
+	});
+};
+exports.changeStatus = function(req,res){
+	//Este método identifica el estado del pedido y continúa con el estado siguiente
+	//de manera automática
+	utils.log("DeliveryItem/NextStatus/"+req.params.delivery_id,"Recibo:",JSON.stringify(req.body));
+	//Verificamos que llegue el objeto mensajero con un id
+	if(req.body.messenger_info){
+		req.body.messenger_info = utils.isJson(req.body.messenger_info) ? 
+										JSON.parse(req.body.messenger_info): 
+										req.body.messenger_info ;
+	}
+	else{
+		res.json({status: false, error: "No se encontró el objeto mensajero"});
+		return;
+	}
+	//Procedemos a actualizar el DeliveryItem
+	//Este debe tener condicion de overall_status: started y 
+	//el id correcto del delivery y el mensajero
+	DeliveryItem.findOne({_id:req.params.delivery_id}, 
+	   function(err,object){
+		   	if(!object){
+			   	res.json({status: false, error: "No se encontró el DeliveryItem"});
+		   	}
+		   	else{
+			   	//Este caso es cuando el usuario crea el pedido y este aún no ha sido aceptado
+			   	//Por ningún mensajero
+			   	if(req.params.status == CONSTANTS.STATUS.SYSTEM.ACCEPTED){
+				   	//Este es el primer caso para la aceptación del servicio
+				   	//El objeto delivery tendrá ahora el id del mensajero
+				   	//y el objeto mensajero en su totalidad para ser mostrado
+				   	//en la aplicación de usuario
+					object.messenger_id = req.body.messenger_info._id;
+			   		object.messenger_info = req.body.messenger_info;
+			   		
+			   		if(req.body.messenger_info.time == 0)
+			   			object.estimated = object.pickup_time;
+			   		else
+			   			object.estimated = utils.addMinutes(req.body.messenger_info.time);
+			   			
+			   		//También modificamos el estado del pedido para que este no sea
+			   		//mostrado como disponible a otros mensajeros
+			   		object.status = CONSTANTS.STATUS.SYSTEM.ACCEPTED;
+			   		object.overall_status = CONSTANTS.OVERALLSTATUS.STARTED;
+			   		//Procedemos a guardar con los datos modificados
+					object.save(function(err, result){
+						utils.log("DeliveryItem/Accept","Envío:",JSON.stringify(result));
+						notifyEvent("user",result,object.status);
+						Messenger.findOneAndUpdate({_id:req.body.messenger_info._id},
+		   									{$inc:{"stats.started_services":1}}, 
+		   									function(err, messenger){
+		   									res.json({
+			   											status:true, 
+			   											message:"DeliveryItem aceptado exitosamente.",
+			   											response:result
+			   										});
+
+						});
+					});
+					return;
+			   	}
+			   	//Este caso es cuando el mensajero ya aceptó el servicio 
+			   	//y se encuentra en camino para recogerlo
+			   	else if (req.params.status == CONSTANTS.STATUS.SYSTEM.INTRANSIT){
+				   	//También modificamos el estado del pedido para que este no sea
+			   		//mostrado como disponible a otros mensajeros
+				   	object.status = CONSTANTS.STATUS.SYSTEM.INTRANSIT;
+				   	object.save(function(err, result){
+				   		utils.log("DeliveryItem/InTransit","Envío:",JSON.stringify(object));
+				   		notifyEvent("user",result,object.status);
+				   		res.json({status:true, message:"DeliveryItem ahora está in-transit.", response:object});					});
+					return;
+			   	}
+			   	//Los siguientes casos son posteriores a los casos anteriores
+			   	//Y dependen de la variable roundtrip para crear un nuevo status siguiente
+				else{
+				   	//Verificamos que roundtrip sea positivo
+				   	//Este caso indica que el item después de entregado debe regresar
+				   	//al punto de partida
+					
+						if(req.params.status == CONSTANTS.STATUS.SYSTEM.RETURNING){
+							object.status = CONSTANTS.STATUS.SYSTEM.RETURNING;
+							object.save(function(err, result){
+							notifyEvent("user",result,object.status);
+						   	utils.log("DeliveryItem/Returning","Envío:",JSON.stringify(object));
+								res.json({
+											status:true, 
+											message:"DeliveryItem ahora está" + object.status, 
+											response:result
+										});
+							});
+						}
+						//Si el item se encuentra en tránsito debemos setearlo como
+						//returned y el overall_status se marca cómo finished
+						//este servicio ya está terminado y el motorizado cumplió
+						else if(req.params.status = CONSTANTS.STATUS.SYSTEM.RETURNED){
+							object.status = CONSTANTS.STATUS.SYSTEM.RETURNED;
+							object.overall_status = CONSTANTS.OVERALLSTATUS.FINISHED;
+							object.save(function(err, result){
+								notifyEvent("user",result,object.status);
+							   	utils.log("DeliveryItem/Returned","Envío:",JSON.stringify(object));
+							   	Messenger.findOneAndUpdate({_id:req.body.messenger_info._id},
+	   									{$inc:{"stats.finished_services":1}}, 
+	   									function(err, user){
+	   									res.json({
+												status:true, 
+												message:"DeliveryItem ahora está" + object.status, 
+												response:result
+											});
+		   						});
+							});
+						}
+					//Este caso indica que el item después de entregado NO debe regresar
+				   	//al punto de partida
+					else if(req.params.status = CONSTANTS.STATUS.SYSTEM.DELIVERED){
+						//El item se encuentra en tránsito, debemos setearlo como
+						//delivered y el overall_status se marca cómo finished
+						//este servicio ya está terminado y el motorizado cumplió
+						object.status = CONSTANTS.STATUS.SYSTEM.DELIVERED;
+						object.overall_status = CONSTANTS.OVERALLSTATUS.FINISHED;
+						object.save(function(err, result){
+							notifyEvent("user",result,object.status);
+							utils.log("DeliveryItem/Delivered","Envío:",JSON.stringify(object));
+							Messenger.findOneAndUpdate({_id:req.body.messenger_info._id},
+	   									{$inc:{"stats.finished_services":1}}, 
+	   									function(err, user){
+		   									res.json({
+											status:true, 
+											message:"DeliveryItem ahora está" + object.status, 
+											response:result
+										});
+	   						});
+						});
+					}
+			   	}
 		   	}
 	});
 };
