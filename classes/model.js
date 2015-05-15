@@ -1585,65 +1585,61 @@ exports.changeStatus = function(req,res){
 			   	}
 			   	//Los siguientes casos son posteriores a los casos anteriores
 			   	//Y dependen de la variable roundtrip para crear un nuevo status siguiente
-				else{
-				   	//Verificamos que roundtrip sea positivo
-				   	//Este caso indica que el item después de entregado debe regresar
-				   	//al punto de partida
+		
 					
-						if(req.params.status == CONSTANTS.STATUS.SYSTEM.RETURNING){
-							object.status = CONSTANTS.STATUS.SYSTEM.RETURNING;
-							object.save(function(err, result){
-							notifyEvent("user",result,object.status);
-						   	utils.log("DeliveryItem/Returning","Envío:",JSON.stringify(object));
-								res.json({
-											status:true, 
-											message:"DeliveryItem ahora está" + object.status, 
-											response:result
-										});
-							});
-						}
-						//Si el item se encuentra en tránsito debemos setearlo como
-						//returned y el overall_status se marca cómo finished
-						//este servicio ya está terminado y el motorizado cumplió
-						else if(req.params.status = CONSTANTS.STATUS.SYSTEM.RETURNED){
-							object.status = CONSTANTS.STATUS.SYSTEM.RETURNED;
-							object.overall_status = CONSTANTS.OVERALLSTATUS.FINISHED;
-							object.save(function(err, result){
-								notifyEvent("user",result,object.status);
-							   	utils.log("DeliveryItem/Returned","Envío:",JSON.stringify(object));
-							   	Messenger.findOneAndUpdate({_id:req.body.messenger_info._id},
-	   									{$inc:{"stats.finished_services":1}}, 
-	   									function(err, user){
+				else if(req.params.status == CONSTANTS.STATUS.SYSTEM.RETURNING){
+					object.status = CONSTANTS.STATUS.SYSTEM.RETURNING;
+					object.save(function(err, result){
+					notifyEvent("user",result,object.status);
+				   	utils.log("DeliveryItem/Returning","Envío:",JSON.stringify(object));
+						res.json({
+									status:true, 
+									message:"DeliveryItem ahora está" + object.status, 
+									response:result
+								});
+					});
+				}
+				//Si el item se encuentra en tránsito debemos setearlo como
+				//returned y el overall_status se marca cómo finished
+				//este servicio ya está terminado y el motorizado cumplió
+				else if(req.params.status = CONSTANTS.STATUS.SYSTEM.RETURNED){
+					object.status = CONSTANTS.STATUS.SYSTEM.RETURNED;
+					object.overall_status = CONSTANTS.OVERALLSTATUS.FINISHED;
+					object.save(function(err, result){
+						notifyEvent("user",result,object.status);
+					   	utils.log("DeliveryItem/Returned","Envío:",JSON.stringify(object));
+					   	Messenger.findOneAndUpdate({_id:req.body.messenger_info._id},
+									{$inc:{"stats.finished_services":1}}, 
+									function(err, user){
+									res.json({
+										status:true, 
+										message:"DeliveryItem ahora está" + object.status, 
+										response:result
+									});
+   						});
+					});
+				}
+				//Este caso indica que el item después de entregado NO debe regresar
+			   	//al punto de partida
+				else if(req.params.status = CONSTANTS.STATUS.SYSTEM.DELIVERED){
+					//El item se encuentra en tránsito, debemos setearlo como
+					//delivered y el overall_status se marca cómo finished
+					//este servicio ya está terminado y el motorizado cumplió
+					object.status = CONSTANTS.STATUS.SYSTEM.DELIVERED;
+					object.overall_status = CONSTANTS.OVERALLSTATUS.FINISHED;
+					object.save(function(err, result){
+						notifyEvent("user",result,object.status);
+						utils.log("DeliveryItem/Delivered","Envío:",JSON.stringify(object));
+						Messenger.findOneAndUpdate({_id:req.body.messenger_info._id},
+   									{$inc:{"stats.finished_services":1}}, 
+   									function(err, user){
 	   									res.json({
-												status:true, 
-												message:"DeliveryItem ahora está" + object.status, 
-												response:result
-											});
-		   						});
-							});
-						}
-					//Este caso indica que el item después de entregado NO debe regresar
-				   	//al punto de partida
-					else if(req.params.status = CONSTANTS.STATUS.SYSTEM.DELIVERED){
-						//El item se encuentra en tránsito, debemos setearlo como
-						//delivered y el overall_status se marca cómo finished
-						//este servicio ya está terminado y el motorizado cumplió
-						object.status = CONSTANTS.STATUS.SYSTEM.DELIVERED;
-						object.overall_status = CONSTANTS.OVERALLSTATUS.FINISHED;
-						object.save(function(err, result){
-							notifyEvent("user",result,object.status);
-							utils.log("DeliveryItem/Delivered","Envío:",JSON.stringify(object));
-							Messenger.findOneAndUpdate({_id:req.body.messenger_info._id},
-	   									{$inc:{"stats.finished_services":1}}, 
-	   									function(err, user){
-		   									res.json({
-											status:true, 
-											message:"DeliveryItem ahora está" + object.status, 
-											response:result
-										});
-	   						});
-						});
-					}
+										status:true, 
+										message:"DeliveryItem ahora está" + object.status, 
+										response:result
+									});
+   						});
+					});
 			   	}
 		   	}
 	});
