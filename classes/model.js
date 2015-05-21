@@ -461,7 +461,16 @@ exports.authenticateUser = function(req,res){
 //Read All*
 exports.getAllUsers = function(req,res){
 	//Esta función expone un servicio para buscar todos los usuarios sin ningún criterio de búsqueda
-	User.find({},exclude,function(err,objects){
+	var sort = {};
+	if(req.params.sort){
+		sort = utils.isJson(req.params.sort) ? JSON.parse(req.params.sort):req.params.sort;
+	}
+	User.find({})
+	.select(exclude)
+	.sort(sort.name)
+	.skip(sort.skip)
+	.limit(sort.limit)
+	.exec(function(err,objects){
 		if(err){
 			res.json({status: false, error: "not found"});
 		}
@@ -888,7 +897,16 @@ exports.authenticateMessenger = function(req,res){
 exports.getAllMessengers = function(req,res){
 	//Esta función expone un servicio para buscar todos los mensajeros sin ningún criterio de búsqueda
 	//Pendiente filtrado y límite
-	Messenger.find({},exclude,function(err,objects){
+	var sort = {};
+	if(req.params.sort){
+		sort = utils.isJson(req.params.sort) ? JSON.parse(req.params.sort):req.params.sort;
+	}
+	Messenger.find({})
+	.select(exclude)
+	.sort(sort.name)
+	.skip(sort.skip)
+	.limit(sort.limit)
+	.exec(function(err,objects){
 		if(err){
 			res.json({status: false, error: "not found"});
 		}
@@ -1142,6 +1160,27 @@ exports.getAllDeliveryItems = function(req,res){
 		sort = utils.isJson(req.params.sort) ? JSON.parse(req.params.sort):req.params.sort;
 	}
 	DeliveryItem.find({})
+	.sort(sort.name)
+	.skip(sort.skip)
+	.limit(sort.limit)
+	.execFind(function(err,objects){
+		if(err){
+			res.json({status: false, error: "not found"});
+		}
+		else{
+			res.json({status: true, response: objects});
+		}
+	});
+};
+//Read Many
+exports.getAllDeliveryItemsByStatus = function(req,res){
+	//Esta función expone un servicio para buscar todos los DeliveryItems sin ningún criterio de búsqueda
+	//Pendiente filtrado y límite
+	var sort = {};
+	if(req.params.sort){
+		sort = utils.isJson(req.params.sort) ? JSON.parse(req.params.sort):req.params.sort;
+	}
+	DeliveryItem.find({status:req.params.status})
 	.sort(sort.name)
 	.skip(sort.skip)
 	.limit(sort.limit)

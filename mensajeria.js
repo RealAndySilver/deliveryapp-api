@@ -73,7 +73,7 @@ app.post('/api_1.0/User/Create', model.createUser);
 //User Read APIs
 app.get('/api_1.0/User/Email/:email', model.getUserByEmail);
 app.get('/api_1.0/User/:user_id', model.getUserByID);
-app.get('/api_1.0/Users', model.getAllUsers);
+app.get('/api_1.0/Users/:sort?', model.getAllUsers);
 app.get('/api_1.0/User/Favorites/:user_id', model.getFavorites);
 //User Deliveries Read APIs
 app.get('/api_1.0/User/StartedDeliveries/:user_id', model.startedDeliveries);
@@ -108,7 +108,7 @@ app.post('/api_1.0/Messenger/Create', model.createMessenger);
 //User Read APIs
 app.get('/api_1.0/Messenger/Email/:email', model.getMessengerByEmail);
 app.get('/api_1.0/Messenger/:messenger_id', model.getMessengerByID);
-app.get('/api_1.0/Messengers', model.getAllMessengers);
+app.get('/api_1.0/Messengers/:sort?', model.getAllMessengers);
 //User Authenticate
 app.put('/api_1.0/Messenger/Login', model.authenticateMessenger);
 //User Update APIs
@@ -139,6 +139,7 @@ app.get('/api_1.0/DeliveryItem/UserFinished/:user_id/:sort?', model.getUserFinis
 app.get('/api_1.0/DeliveryItem/UserAborted/:user_id/:sort?', model.getUserAborted);
 app.get('/api_1.0/DeliveryItems/Near/:lat/:lon/:maxDistance/:messenger_id/:sort?', model.getNearDeliveryItems);
 app.get('/api_1.0/DeliveryItems/:sort?', model.getAllDeliveryItems);
+app.get('/api_1.0/DeliveryItems/:status/:sort?', model.getAllDeliveryItemsByStatus);
 app.get('/api_1.0/DeliveryItems/OverallStatus/:overall_status/:messenger_id/:sort?', model.getByOverallStatus);
 //DeliveryItem Update APIs
 app.put('/api_1.0/DeliveryItem/AddPic/:delivery_id', model.addPicToDeliveryItem);
