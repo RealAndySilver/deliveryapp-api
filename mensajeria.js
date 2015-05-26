@@ -141,6 +141,8 @@ app.get('/api_1.0/DeliveryItems/Near/:lat/:lon/:maxDistance/:messenger_id/:sort?
 app.get('/api_1.0/DeliveryItems/:sort?', model.getAllDeliveryItems);
 app.get('/api_1.0/DeliveryItems/:status/:sort?', model.getAllDeliveryItemsByStatus);
 app.get('/api_1.0/DeliveryItems/OverallStatus/:overall_status/:messenger_id/:sort?', model.getByOverallStatus);
+app.get('/api_1.0/Count/DeliveryItems/:status?', model.getCountWithStatus);
+
 //DeliveryItem Update APIs
 app.put('/api_1.0/DeliveryItem/AddPic/:delivery_id', model.addPicToDeliveryItem);
 //DeliveryItem Messenger Status Updates APIs

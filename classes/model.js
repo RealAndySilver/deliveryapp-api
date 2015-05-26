@@ -1335,6 +1335,22 @@ exports.getUserAborted = function(req,res){
 		}
 	});
 };
+exports.getCountWithStatus = function(req,res){
+	var query = {};
+	if(req.params.status){
+		query.status = req.params.status;
+	}
+	DeliveryItem.count(query)
+	.exec(function(err,objects){
+		if(err){
+			res.json({status: false, error: "not found"});
+		}
+		else{
+			utils.log("DeliveryItem/Count/"+req.params.status,"Envío:",JSON.stringify(objects));
+			res.json({status: true, response: objects});
+		}
+	});
+};
 
 //Update*
 exports.addPicToDeliveryItem = function(req,res){
