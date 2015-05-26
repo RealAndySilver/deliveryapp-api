@@ -78,7 +78,7 @@ app.get('/api_1.0/User/Favorites/:user_id', model.getFavorites);
 //User Deliveries Read APIs
 app.get('/api_1.0/User/StartedDeliveries/:user_id', model.startedDeliveries);
 app.get('/api_1.0/User/RequestedDeliveries/:user_id', model.requestedDeliveries);
-app.get('/api_1.0/User/FinishedDeliveries/:user_id', model.finishedDeliveries);
+app.get('/api_1.0/User/FinishedDeliveries/:user_id/:sort?', model.finishedDeliveries);
 //User Authenticate
 app.put('/api_1.0/User/Login', model.authenticateUser);
 //User Update APIs

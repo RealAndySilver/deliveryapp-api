@@ -33,3 +33,37 @@ exports.verifyHeader = function (req,res,next){
 			},
 		});	
 };
+
+exports.go = function(req,res,next,SchemaObject,type){
+	var today = new Date();
+	var sessionDate = null;
+	var twoWeeks = new Date(today.getFullYear(), today.getMonth(), today.getDate()+14);
+	var auth = req.headers['authorization'];  
+	var loginInfo = decodeAuth(auth);
+	
+	SchemaObject.findOne({email: loginInfo.email})
+		.exec(function(err,object){
+			if(!object){
+				res.json({status: false, error: "not found "+loginInfo.email});
+			}
+			else{
+				if(security.compareHash(loginInfo.password, object.password)){
+					req.info.type = type;
+					req.info.vendor = object;
+					sessionDate = object.session.exp_date;
+					if(today<sessionDate){
+						object.session.exp_date = twoWeeks;
+						object.save(function(err, result){
+							next();
+						});
+					}
+					else{
+						res.json({status: true, response: "Session expired, please log in."});
+					}
+				}
+				else{
+						res.json({status: true, response: "Not found..."});
+				}
+			}
+		});
+};

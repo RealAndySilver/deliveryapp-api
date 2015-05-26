@@ -77,6 +77,7 @@ var CONSTANTS = {
 		KEY : 'key'
 	}
 };
+var limitForSort = 10;
 //Producción
 //var hostname = "192.241.187.135:2000";
 var webapp = "192.241.187.135:3000"
@@ -87,6 +88,32 @@ var hostname = "192.168.0.21:2000";
 //////////////////////////////////
 //End of Global Vars//////////////
 //////////////////////////////////
+
+//Session
+exports.verifySession = function(req,res,next){
+    req.info = {};
+	var type = req.headers.type;
+	//console.log("Veryfing header");
+	//console.log("expired: "+JSON.stringify(req.headers.expired));
+	//console.log("type: "+JSON.stringify(req.headers.type));
+	if(req.headers.expired){
+		 res.json({status: true, response: "Session expired"});
+	}
+	if(type == "admin"){
+		req.info.type = "admin";
+		next();
+	}
+	else if(type == "user"){
+		authentication.go(req,res,next,User,type);
+	}
+	else if(type == "messenger"){
+		authentication.go(req,res,next,Messenger,type);
+	}
+	else{
+		res.json({status: false, response: "Header missing."});
+	}
+};
+//
 
 //////////////////////////////////
 //SubDocumentSchema///////////////
@@ -469,7 +496,7 @@ exports.getAllUsers = function(req,res){
 	.select(exclude)
 	.sort(sort.name)
 	.skip(sort.skip)
-	.limit(sort.limit)
+	.limit(sort.limit || limitForSort)
 	.exec(function(err,objects){
 		if(err){
 			res.json({status: false, error: "not found"});
@@ -507,7 +534,15 @@ exports.startedDeliveries = function(req,res){
 exports.finishedDeliveries = function(req,res){
 	//Esta función expone un servicio para buscar los deliveries que el usuario haya iniciado,
 	//qué ya hayan sido aceptados, y qué también hayan sido finalizados
-	DeliveryItem.find({user_id:req.params.user_id, overall_status:CONSTANTS.OVERALLSTATUS.FINISHED},exclude,function(err,objects){
+	var sort = {};
+	if(req.params.sort){
+		sort = utils.isJson(req.params.sort) ? JSON.parse(req.params.sort):req.params.sort;
+	}
+	DeliveryItem.find({user_id:req.params.user_id, overall_status:CONSTANTS.OVERALLSTATUS.FINISHED})
+	.sort(sort.name)
+	.skip(sort.skip)
+	.limit(sort.limit || limitForSort)
+	.exec(function(err,objects){
 		if(err){
 			res.json({status: false, error: "not found"});
 		}
@@ -905,7 +940,7 @@ exports.getAllMessengers = function(req,res){
 	.select(exclude)
 	.sort(sort.name)
 	.skip(sort.skip)
-	.limit(sort.limit)
+	.limit(sort.limit || limitForSort)
 	.exec(function(err,objects){
 		if(err){
 			res.json({status: false, error: "not found"});
@@ -1162,7 +1197,7 @@ exports.getAllDeliveryItems = function(req,res){
 	DeliveryItem.find({})
 	.sort(sort.name)
 	.skip(sort.skip)
-	.limit(sort.limit)
+	.limit(sort.limit || limitForSort)
 	.execFind(function(err,objects){
 		if(err){
 			res.json({status: false, error: "not found"});
@@ -1183,7 +1218,7 @@ exports.getAllDeliveryItemsByStatus = function(req,res){
 	DeliveryItem.find({status:req.params.status})
 	.sort(sort.name)
 	.skip(sort.skip)
-	.limit(sort.limit)
+	.limit(sort.limit || limitForSort)
 	.execFind(function(err,objects){
 		if(err){
 			res.json({status: false, error: "not found"});
@@ -1232,7 +1267,7 @@ exports.getNearDeliveryItems = function(req,res){
 			DeliveryItem.find(query)
 			.sort(sort.name)
 			.skip(sort.skip)
-			.limit(sort.limit)
+			.limit(sort.limit || limitForSort)
 			.execFind(function(err,objects){
 				if(!err){
 					if(objects.length<=0){
@@ -1264,7 +1299,7 @@ exports.getByOverallStatus = function(req,res){
 	DeliveryItem.find({messenger_id:req.params.messenger_id, overall_status:req.params.overall_status},exclude)
 	.sort(sort.name)
 	.skip(sort.skip)
-	.limit(sort.limit)
+	.limit(sort.limit || limitForSort)
 	.execFind(function(err,objects){
 		if(err){
 			res.json({status: false, error: "not found"});
@@ -1284,7 +1319,7 @@ exports.getUserActive = function(req,res){
 	DeliveryItem.find({user_id:req.params.user_id, $or:[{overall_status:'requested'},{overall_status:'started'}]})
 	.sort(sort.name)
 	.skip(sort.skip)
-	.limit(sort.limit)
+	.limit(sort.limit || limitForSort)
 	.execFind(function(err,objects){
 		if(err){
 			res.json({status: false, error: "not found"});
@@ -1304,7 +1339,7 @@ exports.getUserFinished = function(req,res){
 	DeliveryItem.find({user_id:req.params.user_id, overall_status:'finished'})
 	.sort(sort.name)
 	.skip(sort.skip)
-	.limit(sort.limit)
+	.limit(sort.limit || limitForSort)
 	.execFind(function(err,objects){
 		if(err){
 			res.json({status: false, error: "not found"});
@@ -1324,7 +1359,7 @@ exports.getUserAborted = function(req,res){
 	DeliveryItem.find({user_id:req.params.user_id, overall_status:CONSTANTS.OVERALLSTATUS.ABORTED})
 	.sort(sort.name)
 	.skip(sort.skip)
-	.limit(sort.limit)
+	.limit(sort.limit || limitForSort)
 	.execFind(function(err,objects){
 		if(err){
 			res.json({status: false, error: "not found"});
@@ -1340,7 +1375,9 @@ exports.getCountWithStatus = function(req,res){
 	if(req.params.status){
 		query.status = req.params.status;
 	}
-	DeliveryItem.count(query)
+	
+	DeliveryItem
+	.count(query)
 	.exec(function(err,objects){
 		if(err){
 			res.json({status: false, error: "not found"});
