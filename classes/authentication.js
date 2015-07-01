@@ -1,3 +1,11 @@
+var CONSTANTS = {
+	ERROR: {
+		BADAUTH : 'a1',
+		SESSIONEXPIRED : 'a2',
+		FORBIDDEN : 'a3'
+	}	
+};
+var	security = require('../classes/security');
 exports.verifyHeader = function (req,res,next){
 //next();
 	res.format({
@@ -33,14 +41,36 @@ exports.verifyHeader = function (req,res,next){
 			},
 		});	
 };
+var decodeAuth = function(auth){
+	
+	console.log("Authorization Header is: ", auth);
+	if(!auth) { 
+        res.statusCode = 401;
+        res.json({status: false, error: "not session attached"});
+    }
+    else if(auth) {     
+        var tmp = auth.split(' ');  
 
+        var buf = new Buffer(tmp[1], 'base64'); 
+        var plain_auth = buf.toString();
+
+        console.log("Decoded Authorization ", plain_auth);
+
+        var creds = plain_auth.split(':'); 
+        var username = creds[0];
+        var password = creds[1];
+        //password = new Buffer(password).toString('base64');
+		return {email:username,password:password};
+    }
+};
+exports.decodeAuth = decodeAuth;
 exports.go = function(req,res,next,SchemaObject,type){
 	var today = new Date();
 	var sessionDate = null;
 	var twoWeeks = new Date(today.getFullYear(), today.getMonth(), today.getDate()+14);
 	var auth = req.headers['authorization'];  
 	var loginInfo = decodeAuth(auth);
-	
+		
 	SchemaObject.findOne({email: loginInfo.email})
 		.exec(function(err,object){
 			if(!object){
@@ -48,6 +78,8 @@ exports.go = function(req,res,next,SchemaObject,type){
 			}
 			else{
 				if(security.compareHash(loginInfo.password, object.password)){
+					console.log('entró');
+					//return;
 					req.info.type = type;
 					req.info.vendor = object;
 					sessionDate = object.session.exp_date;
@@ -58,11 +90,11 @@ exports.go = function(req,res,next,SchemaObject,type){
 						});
 					}
 					else{
-						res.json({status: true, response: "Session expired, please log in."});
+						res.json({status: true, response: "Session expired, please log in.", error: CONSTANTS.ERROR.SESSIONEXPIRED});
 					}
 				}
 				else{
-						res.json({status: true, response: "Not found..."});
+						res.json({status: true, response: "Bad authentication", error: CONSTANTS.ERROR.BADAUTH});
 				}
 			}
 		});

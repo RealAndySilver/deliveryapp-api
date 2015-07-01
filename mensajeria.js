@@ -14,7 +14,7 @@ var app = express();
 var allowCrossDomain = function(req, res, next) {
     res.header('Access-Control-Allow-Origin', '*');
     res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE');
-    res.header('Access-Control-Allow-Headers', 'Content-Type , Authorization, Content-Length, X-Requested-With');
+    res.header('Access-Control-Allow-Headers', 'Content-Type , Authorization, Content-Length, X-Requested-With, type, token');
     if ('OPTIONS' == req.method) {
       res.send(200);
     }
@@ -70,6 +70,10 @@ app.get('/api_1.0/Password/Redirect/:type/:email/:request/:token', model.passwor
 ///////////////////////////////////////////////////////////////////
 //User Create API
 app.post('/api_1.0/User/Create', model.createUser);
+//User Authenticate
+app.put('/api_1.0/User/Login', model.authenticateUser);
+//Session
+app.all('/api_1.0/User/*', model.verifySession);
 //User Read APIs
 app.get('/api_1.0/User/Email/:email', model.getUserByEmail);
 app.get('/api_1.0/User/:user_id', model.getUserByID);
@@ -79,8 +83,6 @@ app.get('/api_1.0/User/Favorites/:user_id', model.getFavorites);
 app.get('/api_1.0/User/StartedDeliveries/:user_id', model.startedDeliveries);
 app.get('/api_1.0/User/RequestedDeliveries/:user_id', model.requestedDeliveries);
 app.get('/api_1.0/User/FinishedDeliveries/:user_id/:sort?', model.finishedDeliveries);
-//User Authenticate
-app.put('/api_1.0/User/Login', model.authenticateUser);
 //User Update APIs
 app.put('/api_1.0/User/Update/:user_id', model.updateUser);
 //User Delete APIs
@@ -163,6 +165,10 @@ app.put('/api_1.0/DeliveryItem/Restart/:delivery_id', model.restartDeliveryItem)
 app.delete('/api_1.0/DeliveryItem/Delete/:delivery_id/:user_id', model.deleteDeliveryItem);
 //Rate
 app.put('/api_1.0/DeliveryItem/Rate/:delivery_id', model.rateDeliveryItem);
+
+//Logout
+app.put('/api_1.0/Messenger/Logout/:messenger_id', model.logoutMessenger);
+app.put('/api_1.0/User/Logout/:user_id', model.logoutUser);
 ///////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////

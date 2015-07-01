@@ -9,6 +9,7 @@ var mail = require('../classes/mail_sender');
 var mail_template = require('../classes/mail_templates');
 var fs = require('fs');
 var express = require('express');
+var authentication = require('../classes/authentication');
 var knox = require('knox');
 var gcm = require('node-gcm');
 var	security = require('../classes/security');
@@ -89,32 +90,6 @@ var hostname = "192.168.0.21:2000";
 //End of Global Vars//////////////
 //////////////////////////////////
 
-//Session
-exports.verifySession = function(req,res,next){
-    req.info = {};
-	var type = req.headers.type;
-	//console.log("Veryfing header");
-	//console.log("expired: "+JSON.stringify(req.headers.expired));
-	//console.log("type: "+JSON.stringify(req.headers.type));
-	if(req.headers.expired){
-		 res.json({status: true, response: "Session expired"});
-	}
-	if(type == "admin"){
-		req.info.type = "admin";
-		next();
-	}
-	else if(type == "user"){
-		authentication.go(req,res,next,User,type);
-	}
-	else if(type == "messenger"){
-		authentication.go(req,res,next,Messenger,type);
-	}
-	else{
-		res.json({status: false, response: "Header missing."});
-	}
-};
-//
-
 //////////////////////////////////
 //SubDocumentSchema///////////////
 //////////////////////////////////
@@ -153,6 +128,10 @@ var UserSchema= new mongoose.Schema({
 	device : {type: Object, required:false},
 	favorites : {type: Array, required:false},
 	stats : {type: Object, required:false},
+	session: {
+		token: {type: String, required: false},
+		exp_date: {type: Date, required: false},
+	}
 }),
 	User= mongoose.model('User',UserSchema);
 //////////////////////////////////
@@ -180,6 +159,10 @@ var MessengerSchema= new mongoose.Schema({
 	rating_average : {type: Number, required:false},
 	profile_pic : {type: Object, required:false},
 	stats : {type: Object, required:false},
+	session: {
+		token: {type: String, required: false},
+		exp_date: {type: Date, required: false},
+	}
 });
 	Messenger= mongoose.model('Messenger',MessengerSchema);
 //////////////////////////////////
@@ -215,8 +198,10 @@ var DeliveryItemSchema= new mongoose.Schema({
 	images: {type: Array, required:false},
 	rated : {type: Boolean, required:false},
 	rate_object : {type: Object, required:false},
-}),
-	DeliveryItem= mongoose.model('DeliveryItem',DeliveryItemSchema);
+});
+	DeliveryItemSchema.index({ "pickup_location" : "2dsphere"});
+	DeliveryItemSchema.index({ "delivery_location" : "2dsphere"});
+	var DeliveryItem= mongoose.model('DeliveryItem',DeliveryItemSchema);
 //////////////////////////////////
 //End of Appointment  Schema//////
 //////////////////////////////////
@@ -246,6 +231,40 @@ var client = knox.createClient({
   , secret: 'hRZ3P1N8jcLHyeORqh19cVI0wpGV97nuXBNRrLWB'
   , bucket: 'mensajeria'
 });
+
+//Session
+var CONSTANTS = {
+	ERROR: {
+		BADAUTH : 'a1',
+		SESSIONEXPIRED : 'a2',
+		FORBBIDEN : 'a3'
+	}	
+};
+exports.verifySession = function(req,res,next){
+    req.info = {};
+	var type = req.headers.type;
+	//console.log("Veryfing header");
+	//console.log("expired: "+JSON.stringify(req.headers.expired));
+	//console.log("type: "+JSON.stringify(req.headers.type));
+	if(req.headers.expired){
+		 res.json({status: true, response: "Session expired", error: CONSTANTS.ERROR.SESSIONEXPIRED});
+	}
+	if(type == "admin"){
+		req.info.type = "admin";
+		next();
+	}
+	else if(type == "user"){
+
+		authentication.go(req,res,next,User,type);
+	}
+	else if(type == "messenger"){
+		authentication.go(req,res,next,Messenger,type);
+	}
+	else{
+		res.json({status: false, response: "Header missing."});
+	}
+};
+//
 
 //////////////////////////////////
 //Admin CRUD starts here//////////
@@ -397,7 +416,8 @@ exports.authenticateUser = function(req,res){
 //Esta función permite verificar la autenticidad del usuario por medio de un mail y un password
 //Además de esto, si el usuario está en la versión móvil, nos permite capturar información 
 //importante sobre su dispositivo
-
+	var today = new Date();
+	var twoWeeks = new Date(today.getFullYear(), today.getMonth(), today.getDate()+14);
 /*Log*/utils.log("User/Login","Recibo:",JSON.stringify(req.body));
 	//Buscamos inicialmente que la cuenta del usuario exista
 	User.findOne({email:req.body.email},exclude,function(err,user){
@@ -424,8 +444,13 @@ exports.authenticateUser = function(req,res){
 								//Verificamos que el usuario ya haya verificado su cuenta
 								//por medio del email que enviamos
 								if(user.email_confirmation){
-									/*Log*/utils.log("User/Login","Envío:",JSON.stringify(user));
-									res.json({status: true, response: user, message:"Autenticado correctamente, pero no se pudo agregar el dispositivo"});
+									
+									user.session.token= user.email;
+									user.session.exp_date = twoWeeks;
+									user.save(function(err, result){
+										/*Log*/utils.log("User/Login","Envío:",JSON.stringify(user));
+										res.json({status: true, response: result, message:"Autenticado correctamente, pero no se pudo agregar el dispositivo"});
+									});
 								}
 								//Si no está verificado negamos el login
 								else{
@@ -437,8 +462,13 @@ exports.authenticateUser = function(req,res){
 								//Verificamos que el usuario ya haya verificado su cuenta
 								//por medio del email que enviamos
 								if(user.email_confirmation){
-									/*Log*/utils.log("User/Login","Envío:",JSON.stringify(user));
-									res.json({status: true, response: new_user});
+									
+									user.session.token= user.email;
+									user.session.exp_date = twoWeeks;
+									user.save(function(err, result){
+										/*Log*/utils.log("User/Login","Envío:",JSON.stringify(user));
+										res.json({status: true, response: result});
+									});
 								}
 								//Si no está verificado negamos el login
 								else{
@@ -453,8 +483,12 @@ exports.authenticateUser = function(req,res){
 							//Verificamos que el usuario ya haya verificado su cuenta
 							//por medio del email que enviamos
 							if(user.email_confirmation){
-								/*Log*/utils.log("User/Login","Envío:",JSON.stringify(user));
-								res.json({status: true, response: user, message:"Autenticado correctamente, pero ocurrió un error.", error:err});
+								user.session.token= user.email;
+								user.session.exp_date = twoWeeks;
+								user.save(function(err, result){
+									/*Log*/utils.log("User/Login","Envío:",JSON.stringify(user));
+									res.json({status: true, response: result, message:"Autenticado correctamente, pero ocurrió un error.", error:err});
+								});
 							}
 							//Si no está verificado negamos el login
 							else{
@@ -469,7 +503,12 @@ exports.authenticateUser = function(req,res){
 					//Verificamos que el usuario ya haya verificado su cuenta
 					//por medio del email que enviamos
 					if(user.email_confirmation){
-						res.json({status: true, response: user});
+						user.session.token= user.email;
+								user.session.exp_date = twoWeeks;
+								user.save(function(err, result){
+									utils.log("User/Login","Envío:",JSON.stringify(result));
+									res.json({status: true, response: result, message:"Autenticado correctamente"});
+								});
 					}
 					//Si no está verificado negamos el login
 					else{
@@ -2225,6 +2264,48 @@ exports.deleteDeliveryItem = function(req,res){
 //////////////////////////////////
 //End of Messenger CRUD///////////
 //////////////////////////////////
+
+//Logout
+exports.logoutMessenger = function(req,res){
+//Esta función actualiza la información del usuario por medio de un PUT
+
+/*Log*/utils.log("Messenger/Logout","Recibo sin filtro:",JSON.stringify(req.body));
+	
+	//Buscamos el usuario que se desea actualizar por medio de su _id
+	Messenger.findOneAndUpdate({_id:req.params.messenger_id},
+		//Seteamos el nuevo contenido
+	   {$set:{session:{}}}, 
+	   	function(err,object){
+	   	if(!object){
+		   	res.json({status: false, error: "not found"});
+	   	}
+	   	else{
+	   		/*Log*/utils.log("Messenger/Logout","Envío:",JSON.stringify(object));
+		   	res.json({status:true, message:"Mensajero deslogueado exitosamente."});
+	   	}
+	});
+};
+
+exports.logoutUser = function(req,res){
+//Esta función actualiza la información del usuario por medio de un PUT
+
+/*Log*/utils.log("User/Logout","Recibo sin filtro:",JSON.stringify(req.body));
+	
+	//Buscamos el usuario que se desea actualizar por medio de su _id
+	User.findOneAndUpdate({_id:req.params.user_id},
+		//Seteamos el nuevo contenido
+	   {$set:{session:{}}}, 
+	   	function(err,object){
+	   	if(!object){
+		   	res.json({status: false, error: "not found"});
+	   	}
+	   	else{
+	   		/*Log*/utils.log("User/Logout","Envío:",JSON.stringify(object));
+		   	res.json({status:true, message:"Mensajero deslogueado exitosamente."});
+	   	}
+	});
+};
+//End of logout
 
 //////////////////////////////////
 //Verify//////////////////////////
