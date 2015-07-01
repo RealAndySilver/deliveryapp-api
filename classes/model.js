@@ -76,6 +76,11 @@ var CONSTANTS = {
 	APNS : {
 		CERT : 'cert',
 		KEY : 'key'
+	},
+	ERROR: {
+		BADAUTH : 'a1',
+		SESSIONEXPIRED : 'a2',
+		FORBBIDEN : 'a3'
 	}
 };
 var limitForSort = 10;
@@ -233,13 +238,7 @@ var client = knox.createClient({
 });
 
 //Session
-var CONSTANTS = {
-	ERROR: {
-		BADAUTH : 'a1',
-		SESSIONEXPIRED : 'a2',
-		FORBBIDEN : 'a3'
-	}	
-};
+
 exports.verifySession = function(req,res,next){
     req.info = {};
 	var type = req.headers.type;
@@ -878,7 +877,8 @@ exports.authenticateMessenger = function(req,res){
 //Esta función permite verificar la autenticidad del usuario por medio de un mail y un password
 //Además de esto, si el usuario está en la versión móvil, nos permite capturar información 
 //importante sobre su dispositivo
-
+	var today = new Date();
+	var twoWeeks = new Date(today.getFullYear(), today.getMonth(), today.getDate()+14);
 /*Log*/utils.log("Messenger/Login","Recibo:",JSON.stringify(req.body));
 
 	//Buscamos inicialmente que la cuenta del usuario exista
@@ -906,8 +906,12 @@ exports.authenticateMessenger = function(req,res){
 								//Verificamos que el mensajero ya haya verificado su cuenta
 								//por medio del email que enviamos
 								if(messenger.email_confirmation){
-									/*Log*/utils.log("Messenger/Login","Envío:",JSON.stringify(messenger));
-									res.json({status: true, response: messenger, message:"Autenticado correctamente, pero no se pudo agregar el dispositivo"});
+									messenger.session.token= messenger.email;
+									messenger.session.exp_date = twoWeeks;
+									messenger.save(function(err, result){
+										/*Log*/utils.log("Messenger/Login","Envío:",JSON.stringify(result));
+										res.json({status: true, response: result, message:"Autenticado correctamente, pero no se pudo agregar el dispositivo"});
+									});
 								}
 								//Si no está verificado negamos el login
 								else{
@@ -919,8 +923,12 @@ exports.authenticateMessenger = function(req,res){
 								//Verificamos que el usuario ya haya verificado su cuenta
 								//por medio del email que enviamos
 								if(messenger.email_confirmation){
-									/*Log*/utils.log("User/Login","Envío:",JSON.stringify(messenger));
-									res.json({status: true, response: new_messenger});
+									messenger.session.token= messenger.email;
+									messenger.session.exp_date = twoWeeks;
+									messenger.save(function(err, result){
+										/*Log*/utils.log("Messenger/Login","Envío:",JSON.stringify(result));
+										res.json({status: true, response: result});
+									});
 								}
 								//Si no está verificado negamos el login
 								else{
@@ -935,8 +943,12 @@ exports.authenticateMessenger = function(req,res){
 							//Verificamos que el usuario ya haya verificado su cuenta
 							//por medio del email que enviamos
 							if(messenger.email_confirmation){
-								/*Log*/utils.log("User/Login","Envío:",JSON.stringify(messenger));
-								res.json({status: true, response: messenger, message:"Autenticado correctamente, pero ocurrió un error.", error:err});
+									messenger.session.token= messenger.email;
+									messenger.session.exp_date = twoWeeks;
+									messenger.save(function(err, result){
+										/*Log*/utils.log("User/Login","Envío:",JSON.stringify(result));
+										res.json({status: true, response: result, message:"Autenticado correctamente, pero ocurrió un error.", error:err});
+								});
 							}
 							//Si no está verificado negamos el login
 							else{
@@ -951,7 +963,11 @@ exports.authenticateMessenger = function(req,res){
 					//Verificamos que el usuario ya haya verificado su cuenta
 					//por medio del email que enviamos
 					if(messenger.email_confirmation){
-						res.json({status: true, response: messenger});
+						messenger.session.token= messenger.email;
+						messenger.session.exp_date = twoWeeks;
+						messenger.save(function(err, result){
+							res.json({status: true, response: result});
+						});
 					}
 					//Si no está verificado negamos el login
 					else{

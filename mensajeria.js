@@ -72,8 +72,12 @@ app.get('/api_1.0/Password/Redirect/:type/:email/:request/:token', model.passwor
 app.post('/api_1.0/User/Create', model.createUser);
 //User Authenticate
 app.put('/api_1.0/User/Login', model.authenticateUser);
+//Messenger Authenticate
+app.put('/api_1.0/Messenger/Login', model.authenticateMessenger);
+//Messenger Create APIs
+app.post('/api_1.0/Messenger/Create', model.createMessenger);
 //Session
-app.all('/api_1.0/User/*', model.verifySession);
+app.all('/api_1.0/*', model.verifySession);
 //User Read APIs
 app.get('/api_1.0/User/Email/:email', model.getUserByEmail);
 app.get('/api_1.0/User/:user_id', model.getUserByID);
@@ -105,14 +109,12 @@ app.put('/api_1.0/User/UnFav/:user_id', model.unFavMessenger);
 ///////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////
-//Messenger Create APIs
-app.post('/api_1.0/Messenger/Create', model.createMessenger);
+
 //User Read APIs
 app.get('/api_1.0/Messenger/Email/:email', model.getMessengerByEmail);
 app.get('/api_1.0/Messenger/:messenger_id', model.getMessengerByID);
 app.get('/api_1.0/Messengers/:sort?', model.getAllMessengers);
-//User Authenticate
-app.put('/api_1.0/Messenger/Login', model.authenticateMessenger);
+
 //User Update APIs
 app.put('/api_1.0/Messenger/Update/:messenger_id', model.updateMessenger);
 app.put('/api_1.0/Messenger/AddPic/:messenger_id', model.updateProfilePic);

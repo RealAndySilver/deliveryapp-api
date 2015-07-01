@@ -94,6 +94,7 @@ exports.go = function(req,res,next,SchemaObject,type){
 					}
 				}
 				else{
+					console.log('wrong pass');
 						res.json({status: true, response: "Bad authentication", error: CONSTANTS.ERROR.BADAUTH});
 				}
 			}
