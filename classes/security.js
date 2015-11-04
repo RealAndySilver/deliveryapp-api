@@ -17,7 +17,7 @@ exports.base64 = function(data){
 	return new Buffer(data).toString('base64');
 };
 var encrypt = function(data){
-	var bcrypt = require('bcrypt');
+	//var bcrypt = require('bcrypt');
 	// Generate a salt
 	var salt = bcrypt.genSaltSync(10);
 	// Hash the password with the salt

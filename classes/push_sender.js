@@ -9,7 +9,7 @@ var CONSTANTS = {
 };
 
 exports.send = function (notification){
-	var development = true;
+	var development = false;
 	var certificate = notification.cert;
 	var key = notification.key;
 	

@@ -88,7 +88,7 @@ var limitForSort = 10;
 //var hostname = "192.241.187.135:2000";
 var webapp = "192.241.187.135:3000"
 //Dev
-var hostname = "192.168.0.21:2000";
+var hostname = "192.241.187.135:2000";
 //var webapp = "192.241.187.135:3000";
 
 //////////////////////////////////
@@ -190,9 +190,14 @@ var DeliveryItemSchema= new mongoose.Schema({
 	delivery_location : {type: {type: String}, 'coordinates':{type:[Number]}},	
 	delivery_object: {type: Object, required:true},
 	roundtrip: {type: Boolean, required:false},
+	send_image: {type: Boolean, required:false},
+	send_signature: {type: Boolean, required:false},
+	insurance: {type: Boolean, required:false},
 	instructions : {type: String, required:true},
 	priority: {type: Number, required:false},
-	deadline: {type: Date, required:true},
+	deadline: {type: Date, required:false},
+	time_to_pickup: {type: String, required:false},
+	time_to_deliver: {type: String, required:false},
 	date_created: {type: Date},
 	declared_value : {type: Number, required:false},
 	price_to_pay : {type: Number, required:false},
@@ -381,7 +386,7 @@ exports.createUser = function(req,res){
 		else{
 			//Una vez creado el documento en la base de datos procedemos a enviar un email
 			//de confirmación
-			emailVerification(req,object,'user');
+			//emailVerification(req,object,'user');
 			utils.log("User","Envío:",JSON.stringify(object));
 			res.json({status: true, message: "Usuario creado exitosamente. Proceder a activar la cuenta.", response: object});
 		}
@@ -843,7 +848,7 @@ utils.log("Messenger","Recibo:",JSON.stringify(req.body));
 		else{
 			//Una vez creado el documento en la base de datos procedemos a enviar un email
 			//de confirmación
-			emailVerification(req,object,'messenger');
+			//emailVerification(req,object,'messenger');
 			utils.log("Messenger","Envío:",JSON.stringify(object));
 			res.json({status: true, message: "Mensajero creado exitosamente. Proceder a activar la cuenta.", response: object});
 		}
@@ -1206,14 +1211,16 @@ utils.log("Delivery","Recibo:",JSON.stringify(req.body));
 		delivery_location : delivery_location,	
 		delivery_object: req.body.delivery_object,
 		roundtrip: req.body.roundtrip,
+		send_image: req.body.send_image,
+		send_signature: req.body.send_image,
 		instructions : req.body.instructions,
 		priority: req.body.priority,
-		deadline: req.body.deadline,
 		declared_value : req.body.declared_value,
 		price_to_pay : req.body.price_to_pay,
 		overall_status : CONSTANTS.OVERALLSTATUS.REQUESTED,
 		status : CONSTANTS.STATUS.SYSTEM.AVAILABLE,
-		pickup_time : req.body.pickup_time,
+		time_to_pickup : req.body.time_to_pickup,
+		time_to_deliver: req.body.time_to_deliver,
 		rated : false,
 		images : [],
 	}).save(function(err,object){
@@ -1231,12 +1238,12 @@ utils.log("Delivery","Recibo:",JSON.stringify(req.body));
 //Read One
 exports.getDeliveryItemByID = function(req,res){
 	//Esta función expone un servicio para buscar un DeliveryItem por id
-	DeliveryItem.findOne({_id:req.params.delivery_id},exclude,function(err,object){
-		console.log("query: "+JSON.stringify(object));
+	DeliveryItem.findOne({_id:req.params.delivery_id},function(err,object){
 		if(!object){
 			res.json({status: false, error: "not found"});
 		}
 		else{
+			console.log("object: ",{status: true, response: object});
 			res.json({status: true, response: object});
 		}
 	});
@@ -1253,7 +1260,7 @@ exports.getAllDeliveryItems = function(req,res){
 	.sort(sort.name)
 	.skip(sort.skip)
 	.limit(sort.limit || limitForSort)
-	.execFind(function(err,objects){
+	.exec(function(err,objects){
 		if(err){
 			res.json({status: false, error: "not found"});
 		}
@@ -1274,7 +1281,7 @@ exports.getAllDeliveryItemsByStatus = function(req,res){
 	.sort(sort.name)
 	.skip(sort.skip)
 	.limit(sort.limit || limitForSort)
-	.execFind(function(err,objects){
+	.exec(function(err,objects){
 		if(err){
 			res.json({status: false, error: "not found"});
 		}
@@ -1293,8 +1300,14 @@ exports.getNearDeliveryItems = function(req,res){
 			//Verificamos que lleguen los 3 parámetros completos lat lon y distancia
 			//Luego creamos el query de la manera adecuada para que la base de datos
 			//Haga la búsqueda por proximidad
+			for(var i =0; i<object.length;i++){
+				if(object[i].time_to_deliver=="now"){
+					res.json({status: false, message: "Tienes un servicio inmediato por entregar. Debes finalizar este servicio para poder aceptar más."});
+					return;
+				}
+			}
 			if(req.params.lat && req.params.lon && req.params.maxDistance){
-				meters = parseInt(req.params.maxDistance);
+				meters = 15000;//parseInt(req.params.maxDistance);
 				query.pickup_location = {
 							$near:{
 								$geometry:{
@@ -1323,7 +1336,7 @@ exports.getNearDeliveryItems = function(req,res){
 			.sort(sort.name)
 			.skip(sort.skip)
 			.limit(sort.limit || limitForSort)
-			.execFind(function(err,objects){
+			.exec(function(err,objects){
 				if(!err){
 					if(objects.length<=0){
 						res.json({status: false, message: "No hay ningún servicio disponible cerca de ti. Intenta de nuevo en unos momentos."});
@@ -1339,7 +1352,7 @@ exports.getNearDeliveryItems = function(req,res){
 			});
 		}
 		else{
-			res.json({status: false, message: "Tienes más de "+maxServices+" activos."});
+			res.json({status: false, message: "Tienes más de "+maxServices+" servicios activos."});
 		}
 		
 	});
@@ -1355,7 +1368,7 @@ exports.getByOverallStatus = function(req,res){
 	.sort(sort.name)
 	.skip(sort.skip)
 	.limit(sort.limit || limitForSort)
-	.execFind(function(err,objects){
+	.exec(function(err,objects){
 		if(err){
 			res.json({status: false, error: "not found"});
 		}
@@ -1375,7 +1388,7 @@ exports.getUserActive = function(req,res){
 	.sort(sort.name)
 	.skip(sort.skip)
 	.limit(sort.limit || limitForSort)
-	.execFind(function(err,objects){
+	.exec(function(err,objects){
 		if(err){
 			res.json({status: false, error: "not found"});
 		}
@@ -1395,7 +1408,7 @@ exports.getUserFinished = function(req,res){
 	.sort(sort.name)
 	.skip(sort.skip)
 	.limit(sort.limit || limitForSort)
-	.execFind(function(err,objects){
+	.exec(function(err,objects){
 		if(err){
 			res.json({status: false, error: "not found"});
 		}
@@ -1415,7 +1428,7 @@ exports.getUserAborted = function(req,res){
 	.sort(sort.name)
 	.skip(sort.skip)
 	.limit(sort.limit || limitForSort)
-	.execFind(function(err,objects){
+	.exec(function(err,objects){
 		if(err){
 			res.json({status: false, error: "not found"});
 		}
@@ -1458,7 +1471,7 @@ exports.addPicToDeliveryItem = function(req,res){
 	});
 };
 //DeliveryItem Messenger Status Update
-exports.changeStatusAccept = function(req,res){
+exports.changeStatusAcceptee = function(req,res){
 	//Este método identifica el estado del pedido y continúa con el estado siguiente
 	//de manera automática
 	utils.log("DeliveryItem/Status/Accept/"+req.params.delivery_id,"Recibo:",JSON.stringify(req.body));
@@ -1492,7 +1505,7 @@ exports.changeStatusAccept = function(req,res){
 			   		object.messenger_info = req.body.messenger_info;
 			   		
 			   		if(req.body.messenger_info.time == 0)
-			   			object.estimated = object.pickup_time;
+			   			object.estimated = object.time_to_pickup;
 			   		else
 			   			object.estimated = utils.addMinutes(req.body.messenger_info.time);
 			   			
@@ -1517,6 +1530,63 @@ exports.changeStatusAccept = function(req,res){
 					});
 					return;
 			   	}
+	});
+};
+//DeliveryItem Messenger Status Update
+exports.changeStatusAccept = function(req,res){
+	//Este método identifica el estado del pedido y continúa con el estado siguiente
+	//de manera automática
+	utils.log("DeliveryItem/Status/Accept/"+req.params.delivery_id,"Recibo:",JSON.stringify(req.body));
+	//Verificamos que llegue el objeto mensajero con un id
+	if(req.body.messenger_info){
+		req.body.messenger_info = utils.isJson(req.body.messenger_info) ? 
+										JSON.parse(req.body.messenger_info): 
+										req.body.messenger_info ;
+	}
+	else{
+		res.json({status: false, error: "No se encontró el objeto mensajero"});
+		return;
+	}
+	//Procedemos a actualizar el DeliveryItem
+	//Este debe tener condicion de overall_status: started y 
+	//el id correcto del delivery y el mensajero
+	DeliveryItem.findOneAndUpdate({_id:req.params.delivery_id, overall_status:CONSTANTS.OVERALLSTATUS.REQUESTED},
+	{$set: {overall_status:CONSTANTS.OVERALLSTATUS.STARTED}}, 
+	function(err,object){
+		   	if(!object){
+			   	console.log("Ya fue pedido por otro");
+			   	res.json({status: false, message: "Lo sentimos. Este pedido ya fue tomado por otro mensajero.", response:null, error: "Lo sentimos. Este pedido ya fue tomado por otro mensajero."});
+		   	}
+		   	else{
+			   	object.messenger_id = req.body.messenger_info._id;
+		   		object.messenger_info = req.body.messenger_info;
+		   		
+		   		if(req.body.messenger_info.time == 0)
+		   			object.estimated = object.time_to_pickup;
+		   		else
+		   			object.estimated = utils.addMinutes(req.body.messenger_info.time);
+		   			
+		   		//También modificamos el estado del pedido para que este no sea
+		   		//mostrado como disponible a otros mensajeros
+		   		object.status = CONSTANTS.STATUS.SYSTEM.ACCEPTED;
+		   		object.overall_status = CONSTANTS.OVERALLSTATUS.STARTED;
+		   		//Procedemos a guardar con los datos modificados
+				object.save(function(err, result){
+					utils.log("DeliveryItem/Accept","Envío:",JSON.stringify(result));
+					notifyEvent("user",result,object.status);
+					Messenger.findOneAndUpdate({_id:req.body.messenger_info._id},
+	   									{$inc:{"stats.started_services":1}}, 
+	   									function(err, messenger){
+	   									res.json({
+		   											status:true, 
+		   											message:"DeliveryItem aceptado exitosamente.",
+		   											response:result
+		   										});
+
+					});
+				});
+				return;
+		}
 	});
 };
 exports.changeStatusInTransit = function(req,res){
@@ -1708,7 +1778,7 @@ exports.changeStatus = function(req,res){
 			   		object.messenger_info = req.body.messenger_info;
 			   		
 			   		if(req.body.messenger_info.time == 0)
-			   			object.estimated = object.pickup_time;
+			   			object.estimated = object.time_to_pickup;
 			   		else
 			   			object.estimated = utils.addMinutes(req.body.messenger_info.time);
 			   			
@@ -1874,7 +1944,7 @@ exports.nextStatus = function(req,res){
 										req.body.messenger_info ;
 	}
 	else{
-		res.json({status: false, error: "No se encontró el objeto mensajero"});
+		res.json({status: false, error: "No se encontró el objeto mensajero", message:"No se encontró el DeliveryItem"});
 		return;
 	}
 	//Procedemos a actualizar el DeliveryItem
@@ -1883,9 +1953,24 @@ exports.nextStatus = function(req,res){
 	DeliveryItem.findOne({_id:req.params.delivery_id}, 
 	   function(err,object){
 		   	if(!object){
-			   	res.json({status: false, error: "No se encontró el DeliveryItem"});
+			   	res.json({status: false, error: "No se encontró el DeliveryItem", message:"No se encontró el DeliveryItem"});
 		   	}
 		   	else{
+			   	//Debemos verificar si existe mensajero asociado a este deliveryitem para evitar
+			   	//Que otro mensajero lo pueda tomar
+			   			   console.log('Entré al delivery: ', {deliverymsn_id:object.messenger_id, msn:req.body.messenger_info, del:object});
+			   			   
+
+			   	if(object.messenger_id){ 
+				   	if(object.messenger_id.length > 0){
+						if(object.messenger_id != req.body.messenger_info._id){
+						   	console.log('Pedido tomado por otro mensajero: ', {delivery_msn:object.messenger_id, msn:req.body.messenger_info._id});
+						   	res.json({status: false, message: "Lo sentimos. Este pedido ya fue tomado por otro mensajero.", response:null, error: "Lo sentimos. Este pedido ya fue tomado por otro mensajero."});
+						   	return;
+						}
+					}  
+				}
+			   	//return;
 			   	//Este caso es cuando el usuario crea el pedido y este aún no ha sido aceptado
 			   	//Por ningún mensajero
 			   	if(object.status == CONSTANTS.STATUS.SYSTEM.AVAILABLE){
@@ -1897,7 +1982,7 @@ exports.nextStatus = function(req,res){
 			   		object.messenger_info = req.body.messenger_info;
 			   		
 			   		if(req.body.messenger_info.time == 0)
-			   			object.estimated = object.pickup_time;
+			   			object.estimated = object.time_to_pickup;
 			   		else
 			   			object.estimated = utils.addMinutes(req.body.messenger_info.time);
 			   			
@@ -2310,7 +2395,7 @@ exports.logoutUser = function(req,res){
 	//Buscamos el usuario que se desea actualizar por medio de su _id
 	User.findOneAndUpdate({_id:req.params.user_id},
 		//Seteamos el nuevo contenido
-	   {$set:{session:{}}}, 
+	   {$set:{session:{}, device:[]}}, 
 	   	function(err,object){
 	   	if(!object){
 		   	res.json({status: false, error: "not found"});

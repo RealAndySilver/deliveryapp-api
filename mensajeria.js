@@ -59,6 +59,14 @@ app.post('/api_1.0/Account/SendEmailVerification/:type/:emailb64', model.sendEma
 
 app.get('/api_1.0/Password/Redirect/:type/:email/:request/:token', model.passwordRedirect);
 
+//User Recover Password
+app.put('/api_1.0/User/NewPassword/:token', model.newPasswordUser);
+app.get('/api_1.0/User/Recover/:user_email', model.requestRecoverUser);
+
+//User Recover Password
+app.get('/api_1.0/Messenger/Recover/:email', model.requestRecoverMessenger);
+app.put('/api_1.0/Messenger/NewPassword/:token', model.newPasswordMessenger);
+
 //Verify
 //app.all('/api_1.0/*', authentication.verifyHeader);
 
@@ -93,9 +101,7 @@ app.put('/api_1.0/User/Update/:user_id', model.updateUser);
 app.delete('/api_1.0/User/:user_id', model.deleteUser);
 //Change Password
 app.put('/api_1.0/User/Password/:user_id', model.changePasswordUser);
-//User Recover Password
-app.get('/api_1.0/User/Recover/:user_email', model.requestRecoverUser);
-app.put('/api_1.0/User/NewPassword/:token', model.newPasswordUser);
+
 //Invite
 app.put('/api_1.0/User/Invite', model.userInvite);
 //Fav Messenger
@@ -122,9 +128,6 @@ app.put('/api_1.0/Messenger/AddPic/:messenger_id', model.updateProfilePic);
 app.delete('/api_1.0/Messenger/:messenger_id', model.deleteMessenger);
 //Change Password
 app.put('/api_1.0/Messenger/Password/:messenger_id', model.changePasswordMessenger);
-//User Recover Password
-app.get('/api_1.0/Messenger/Recover/:email', model.requestRecoverMessenger);
-app.put('/api_1.0/Messenger/NewPassword/:token', model.newPasswordMessenger);
 //Invite
 app.put('/api_1.0/Messenger/Invite', model.messengerInvite);
 ///////////////////////////////////////////////////////////////////
