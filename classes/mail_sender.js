@@ -9,7 +9,7 @@ var transport = nodemailer.createTransport("SMTP", {
 
 var message = function(subject,the_message,mail_address){
 		result={
-			    from: 'Mensajería <recover@mensajería.com>',
+			    from: 'Mensajería <recover@mensajeria.com>',
 			    to: '<'+mail_address+'>',
 			    subject: subject,
 			    headers: {

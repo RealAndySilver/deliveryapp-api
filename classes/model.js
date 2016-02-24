@@ -83,7 +83,7 @@ var CONSTANTS = {
 		FORBBIDEN : 'a3'
 	}
 };
-var limitForSort = 10;
+var limitForSort = 20;
 //Producción
 //var hostname = "192.241.187.135:2000";
 var webapp = "192.241.187.135:3000"
@@ -151,6 +151,7 @@ var MessengerSchema= new mongoose.Schema({
 	password : {type: String, required:true},
 	password_recover : {status: {type: Boolean}, token:{type:String}},
 	email_confirmation : {type: Boolean, required:true},
+	admin_confirmation : {type: Boolean, required:false},
 	name : {type: String, required:true},
 	lastname : {type: String, required:false},
 	mobilephone : {type: String, required:true},
@@ -186,13 +187,17 @@ var DeliveryItemSchema= new mongoose.Schema({
 	abort_reason: String,
 	item_name : {type: String, required:false},
 	pickup_location : {type: {type: String}, 'coordinates':{type:[Number]}},
+	pickup_details : String,
 	pickup_object: {type: Object, required:true},
 	delivery_location : {type: {type: String}, 'coordinates':{type:[Number]}},	
+	delivery_details : String,
 	delivery_object: {type: Object, required:true},
 	roundtrip: {type: Boolean, required:false},
 	send_image: {type: Boolean, required:false},
 	send_signature: {type: Boolean, required:false},
+	signature_object: {type: Object, required:false},
 	insurance: {type: Boolean, required:false},
+	insurancevalue: {type: Number, required:false},
 	instructions : {type: String, required:true},
 	priority: {type: Number, required:false},
 	deadline: {type: Date, required:false},
@@ -201,6 +206,7 @@ var DeliveryItemSchema= new mongoose.Schema({
 	date_created: {type: Date},
 	declared_value : {type: Number, required:false},
 	price_to_pay : {type: Number, required:false},
+	payment_method : {type: String, required:false}, //credit , cash
 	overall_status : {type: String, required:true}, //requested,started, finished
 	status : {type: String, required:true}, //available, accepted, in-transit, delivered, returning, returned, aborted
 	pickup_time : {type: Date, required:false},
@@ -621,7 +627,7 @@ var filtered_body = utils.remove_empty(req.body);
 	//Buscamos el usuario que se desea actualizar por medio de su _id
 	User.findOneAndUpdate({_id:req.params.user_id},
 		//Seteamos el nuevo contenido
-	   {$set:filtered_body}, 
+	   {$set:filtered_body}, {new:true},
 	   	function(err,object){
 	   	if(!object){
 		   	res.json({status: false, error: "not found"});
@@ -807,6 +813,34 @@ exports.getFavorites = function(req,res){
 //End of User CRUD////////////////////
 //////////////////////////////////////
 
+//Admin Messenger Stuff
+exports.activateMessenger = function(req,res){
+	
+	Messenger.findOneAndUpdate({_id:req.params.messenger_id},
+	{$set:{admin_confirmation:true}},
+	function(err,object){
+		if(!object){
+			console.log('Messenger activate for: ',err);
+			res.json({status: false, error: "Messenger not found"});
+		}
+		else{
+			//mail.send("VuelTap ha aprobado tu solicitud!", "Bienvenido a VuelTap. Ya puedes ingresar a la app usando el usuario y contraseña con el que te inscribiste.",object.email);
+			res.json({status: true, response: object});
+		}
+	});
+};
+exports.deactivateMessenger = function(req,res){
+	Messenger.findOneAndUpdate({_id:req.params.messenger_id},
+	{$set:{admin_confirmation:false}},
+	function(err,object){
+		if(!object){
+			res.json({status: false, error: "Messenger not found"});
+		}
+		else{
+			res.json({status: true, response: object});
+		}
+	});
+};
 //////////////////////////////////
 //Messenger CRUD starts here//////////
 //////////////////////////////////
@@ -868,7 +902,7 @@ exports.getMessengerByEmail = function(req,res){
 };
 exports.getMessengerByID = function(req,res){
 	//Esta función expone un servicio para buscar un mensajero por id
-	Messenger.findOne({_id:req.params.messenger_id},exclude,function(err,object){
+	Messenger.findOneAndUpdate({_id:req.params.messenger_id},exclude,function(err,object){
 		if(!object){
 			res.json({status: false, error: "not found"});
 		}
@@ -884,15 +918,19 @@ exports.authenticateMessenger = function(req,res){
 //importante sobre su dispositivo
 	var today = new Date();
 	var twoWeeks = new Date(today.getFullYear(), today.getMonth(), today.getDate()+14);
-/*Log*/utils.log("Messenger/Login","Recibo:",JSON.stringify(req.body));
+/*Log*/utils.log("Messenger/Login0","Recibo:",JSON.stringify(req.body));
 
 	//Buscamos inicialmente que la cuenta del usuario exista
-	Messenger.findOne({email:req.body.email},exclude,function(err,messenger){
+	Messenger.findOne({email:req.body.email},function(err,messenger){
 		if(!messenger){
 			//No existe
 			res.json({status: false, error: "not found", error_id:0});
 		}
 		else{
+			if(messenger.admin_confirmation != true){
+				res.json({status: false, error: "Este usuario aún no se encuentra activo.", error_id:101});
+				return;
+			}
 			//Verificamos que el hash guardado en password sea igual al password de entrada
 			if(security.compareHash(req.body.password, messenger.password)){
 				//Acá se verifica si llega device info, y se agrega al device list del usuario
@@ -914,7 +952,7 @@ exports.authenticateMessenger = function(req,res){
 									messenger.session.token= messenger.email;
 									messenger.session.exp_date = twoWeeks;
 									messenger.save(function(err, result){
-										/*Log*/utils.log("Messenger/Login","Envío:",JSON.stringify(result));
+										/*Log*/utils.log("Messenger/Login1","Envío:",JSON.stringify(result));
 										res.json({status: true, response: result, message:"Autenticado correctamente, pero no se pudo agregar el dispositivo"});
 									});
 								}
@@ -931,13 +969,13 @@ exports.authenticateMessenger = function(req,res){
 									messenger.session.token= messenger.email;
 									messenger.session.exp_date = twoWeeks;
 									messenger.save(function(err, result){
-										/*Log*/utils.log("Messenger/Login","Envío:",JSON.stringify(result));
+										/*Log*/utils.log("Messenger/Login2","Envío:",JSON.stringify(result));
 										res.json({status: true, response: result});
 									});
 								}
 								//Si no está verificado negamos el login
 								else{
-									utils.log("Messenger/Login","Envío:","Email no confirmado");
+									utils.log("Messenger/Login3","Envío:","Email no confirmado");
 									res.json({status: false, error: "User not confirmed. Please confirm by email", error_id:1});
 								}
 							}
@@ -951,13 +989,13 @@ exports.authenticateMessenger = function(req,res){
 									messenger.session.token= messenger.email;
 									messenger.session.exp_date = twoWeeks;
 									messenger.save(function(err, result){
-										/*Log*/utils.log("User/Login","Envío:",JSON.stringify(result));
+										/*Log*/utils.log("Messenger/Login4","Envío:",JSON.stringify(result));
 										res.json({status: true, response: result, message:"Autenticado correctamente, pero ocurrió un error.", error:err});
 								});
 							}
 							//Si no está verificado negamos el login
 							else{
-								/*Log*/utils.log("Messenger/Login","Envío:","Email no confirmado");
+								/*Log*/utils.log("Messenger/Login5","Envío:","Email no confirmado");
 								res.json({status: false, error: "Messenger not confirmed. Please confirm by email", error_id:1});
 							}
 						}
@@ -1207,16 +1245,22 @@ utils.log("Delivery","Recibo:",JSON.stringify(req.body));
 		item_name: req.body.item_name,
 		date_created: new Date(),
 		pickup_location : pickup_location,
+		pickup_details : req.body.pickup_details,
 		pickup_object: req.body.pickup_object,
 		delivery_location : delivery_location,	
+		delivery_details : req.body.delivery_details,
 		delivery_object: req.body.delivery_object,
 		roundtrip: req.body.roundtrip,
 		send_image: req.body.send_image,
-		send_signature: req.body.send_image,
+		send_signature: req.body.send_signature,
+		signature_object: {status:false, signatureB64:''},
+		insurance: req.body.insurance,
+		insurancevalue: req.body.insurancevalue,
 		instructions : req.body.instructions,
 		priority: req.body.priority,
 		declared_value : req.body.declared_value,
 		price_to_pay : req.body.price_to_pay,
+		payment_method : req.body.payment_method,
 		overall_status : CONSTANTS.OVERALLSTATUS.REQUESTED,
 		status : CONSTANTS.STATUS.SYSTEM.AVAILABLE,
 		time_to_pickup : req.body.time_to_pickup,
@@ -1467,6 +1511,23 @@ exports.addPicToDeliveryItem = function(req,res){
 		else{
 			/*Log*/utils.log("DeliveryItem/AddPic/"+req.params.delivery_id,"Envio:",JSON.stringify(object));
 			uploadImage(req.files.image,object,res);
+		}
+	});
+};
+exports.addSignatureToDeliveryItem = function(req,res){
+	DeliveryItem.findOne({_id:req.params.delivery_id},function(err,object){
+		if(!object){
+			res.json({status: false, error: "not found"});
+		}
+		else{
+			object.signature_object = {
+				status: true,
+				signatureB64: req.body.signatureB64,
+				date_created: new Date()
+			};
+			object.save(function(err, new_object){
+				res.json({status: true});
+			});
 		}
 	});
 };
@@ -2755,6 +2816,24 @@ exports.getPrice = function (req,res){
 	var result = null;
 	var parsedOrigin = "";
 	var parsedDestination = "";
+	var insurancePrice = 0;
+	var minPrice = 5000;
+	if(req.params.insurancevalue){
+		insurancePrice = req.params.insurancevalue;
+/*
+		if(insurancePrice == 500000){
+			insurancePrice = 10000;
+		}
+		else if(insurancePrice == 1000000){
+			insurancePrice = 20000;
+		}
+		else if(insurancePrice == 2000000){
+			insurancePrice = 30000;
+		}
+*/
+		insurancePrice = insurancePrice*0.05;
+	}
+	
 	distance.get(
 	{
 	  index: 1,
@@ -2768,7 +2847,8 @@ exports.getPrice = function (req,res){
 			res.json(
 					{
 						status: false, 
-						message: "Ocurrió un error a la hora de hacer el cálculo",  
+						message: "Ocurrió un error a la hora de hacer el cálculo", 
+						insurance: insurancePrice, 
 						error:err, 
 					}
 				);
@@ -2779,17 +2859,17 @@ exports.getPrice = function (req,res){
 			parsedOrigin = data.origin.split(",");
 			parsedDestination = data.destination.split(",");
 			//if(parsedOrigin[1] == parsedDestination[1]){
-				if(result<5000){
-				result = 5000;
+				if(result<minPrice){
+				result = minPrice;
 				}
 				res.json(
 					{
 						status: true, 
 						message: message+result, 
-						value:result, 
+						value:result,
+						insurance: insurancePrice, 
 						duration:data.duration, 
 						durationValue:data.durationValue,
-						//data:data, 
 						originCity:parsedOrigin, 
 						destinationCity:parsedDestination
 					}
@@ -2810,6 +2890,78 @@ else{
 		}
 	});
 };
+exports.closeToMe = function (req,res){
+	var maxKm = 1;
+	var maxMessengers = 15;
+	var minMessengers = 4;
+	var lat = req.params.lat;
+	var lon = req.params.lon;
+	
+	if(!req.params.lat && !req.params.lon){
+		res.json({status:false, message: 'You must send lat and lon'});
+	}
+	
+	var lat100km = 110.574;
+	var lon100km = 111.320*Math.cos(lat100km);
+	var lat1km = 1/lat100km;
+	var lon1km = 1/lon100km;
+	var messengers = Math.floor((Math.random() * maxMessengers) + minMessengers);
+	var randomKm1 = 0;
+	var randomKm2 = 0;
+	var locationsArray = [];
+	var plusOrMinus1 = 0;
+	var plusOrMinus2 = 0;	
+	
+	for (var i = 0; i<messengers; i++){
+		randomKm1 = Math.random();
+		randomKm2 = Math.random();
+		randomSign = Math.floor((Math.random() * (maxKm*2)) + 1);
+		plusOrMinus1 = Math.random() < 0.5 ? -1 : 1;
+		plusOrMinus2 = Math.random() < 0.5 ? -1 : 1;
+		locationsArray.push({
+			lat:(parseFloat(lat)+parseFloat((lat1km*(maxKm * randomKm1*plusOrMinus1)))), 
+			lon:(parseFloat(lon)+parseFloat(lon1km*(maxKm * randomKm2*plusOrMinus2)))
+		});
+		randomKm1=0;
+		randomKm2=0;
+		plusOrMinus1=0;
+		plusOrMinus2=0;
+	}
+	
+	res.json({
+				status : true,
+				response: {
+					total : locationsArray.length,
+					locations : locationsArray
+				}
+			});
+};
+exports.getInsuranceIntervals = function(req,res){
+	var insuranceIntervals = [
+		100000,
+		200000,
+		300000,
+		400000,
+		500000,
+		600000,
+		700000,
+		800000,
+		900000,
+		1000000,
+		1100000,
+		1200000,
+		1300000,
+		1400000,
+		1500000,
+		1600000,
+		1700000,
+		1800000,
+		1900000,
+		2000000
+	];
+	
+	res.json({status: true, response: insuranceIntervals});
+}
 //Notifier
 var notifyEvent = function(type,inputObject,status){
 
@@ -2832,31 +2984,31 @@ var notifyEvent = function(type,inputObject,status){
 			else{
 				if(status == CONSTANTS.STATUS.SYSTEM.ACCEPTED){
 					notification.status = CONSTANTS.STATUS.USER.ACCEPTED;
-					notification.message = messageintro+"'"+ inputObject.item_name+"'"+" ha sido aceptado."
+					notification.message = messageintro+"'"+ inputObject.item_name+"'"+" ha sido aceptado. Llegará aproximadamente en "+inputObject.messenger_info.time+" minutos";
 				}
 				else if(status == CONSTANTS.STATUS.SYSTEM.INTRANSIT){
 					notification.status = CONSTANTS.STATUS.USER.INTRANSIT;
-					notification.message = messageintro+"'"+ inputObject.item_name+"'"+" se encuentra en tránsito."
+					notification.message = messageintro+"'"+ inputObject.item_name+"'"+" se encuentra en tránsito.";
 				}
 				else if(status == CONSTANTS.STATUS.SYSTEM.RETURNING){
 					notification.status = CONSTANTS.STATUS.USER.RETURNING;
-					notification.message = messageintro+"'"+ inputObject.item_name+"'"+" se encuentra regresando."
+					notification.message = messageintro+"'"+ inputObject.item_name+"'"+" se encuentra regresando.";
 				}
 				else if(status == CONSTANTS.STATUS.SYSTEM.RETURNED){
 					notification.status = CONSTANTS.STATUS.USER.RETURNED;
-					notification.message = messageintro+"'"+ inputObject.item_name+"'"+" ha sido regresado con éxito."
+					notification.message = messageintro+"'"+ inputObject.item_name+"'"+" ha sido regresado con éxito.";
 				}
 				else if(status == CONSTANTS.STATUS.SYSTEM.DELIVERED){
 					notification.status = CONSTANTS.STATUS.USER.DELIVERED;
-					notification.message = messageintro+"'"+ inputObject.item_name+"'"+" ha sido entregado con éxito."
+					notification.message = messageintro+"'"+ inputObject.item_name+"'"+" ha sido entregado con éxito.";
 				}
 				else if(status == CONSTANTS.STATUS.SYSTEM.CANCELLED){
 					notification.status = CONSTANTS.STATUS.USER.CANCELLED;
-					notification.message = messageintro+"'"+ inputObject.item_name+"'"+" está disponible para ser aceptado."
+					notification.message = messageintro+"'"+ inputObject.item_name+"'"+" está disponible para ser aceptado.";
 				}
 				else if(status == CONSTANTS.STATUS.SYSTEM.ABORTED){
 					notification.status = CONSTANTS.STATUS.USER.ABORTED;
-					notification.message = messageintro+"'"+ inputObject.item_name+"'"+" ha sido cancelado por el mensajero."
+					notification.message = messageintro+"'"+ inputObject.item_name+"'"+" ha sido cancelado por el mensajero.";
 				}
 				notification.type = 'delivery';
 				if(object.device && object.device.os){

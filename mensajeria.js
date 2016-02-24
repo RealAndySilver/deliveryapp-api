@@ -43,6 +43,11 @@ app.get('/*', function(req, res, next){
   next(); 
 });
 
+//Public Methods
+app.get('/api_1.0/CloseToMe/:lat/:lon', model.closeToMe);
+app.get('/api_1.0/GetInsuranceIntervals', model.getInsuranceIntervals);
+app.get('/api_1.0/GetPrice/:loc1/:loc2/:insurancevalue?', model.getPrice);
+
 //Middleware to encode password
 app.post('/api_1.0/User/Create', security.passwordEncrypt);
 app.post('/api_1.0/Messenger/Create', security.passwordEncrypt);
@@ -152,6 +157,7 @@ app.get('/api_1.0/Count/DeliveryItems/:status?', model.getCountWithStatus);
 
 //DeliveryItem Update APIs
 app.put('/api_1.0/DeliveryItem/AddPic/:delivery_id', model.addPicToDeliveryItem);
+app.put('/api_1.0/DeliveryItem/AddSignature/:delivery_id', model.addSignatureToDeliveryItem);
 //DeliveryItem Messenger Status Updates APIs
 app.put('/api_1.0/DeliveryItem/ChangeStatus/Accept/:delivery_id', model.changeStatusAccept);
 app.put('/api_1.0/DeliveryItem/ChangeStatus/InTransit/:delivery_id', model.changeStatusInTransit);
@@ -178,8 +184,9 @@ app.put('/api_1.0/User/Logout/:user_id', model.logoutUser);
 ///////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////
 
+app.put('/api_1.0/Admin/ActivateMessenger/:messenger_id', model.activateMessenger);
+app.put('/api_1.0/Admin/DeactivateMessenger/:messenger_id', model.deactivateMessenger);
 
-app.get('/api_1.0/GetPrice/:loc1/:loc2', model.getPrice);
 
 //Create APIs
 app.post('/api_1.0/CreateAdmin', model.createAdmin);
