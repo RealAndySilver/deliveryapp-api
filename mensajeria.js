@@ -89,6 +89,8 @@ app.put('/api_1.0/User/Login', model.authenticateUser);
 app.put('/api_1.0/Messenger/Login', model.authenticateMessenger);
 //Messenger Create APIs
 app.post('/api_1.0/Messenger/Create', model.createMessenger);
+app.put('/api_1.0/Messenger/File/:messenger_id', model.addFile);
+
 //Session
 app.all('/api_1.0/*', model.verifySession);
 //User Read APIs

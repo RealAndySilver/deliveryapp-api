@@ -165,6 +165,7 @@ var MessengerSchema= new mongoose.Schema({
 	rating_average : {type: Number, required:false},
 	profile_pic : {type: Object, required:false},
 	stats : {type: Object, required:false},
+	documents : {type: Object, required:false},
 	session: {
 		token: {type: String, required: false},
 		exp_date: {type: Date, required: false},
@@ -237,6 +238,25 @@ var ImageSchema= new mongoose.Schema({
 	owner_id:{type: String, required: false,unique: false,},
 }),
 	Image= mongoose.model('Image',ImageSchema);
+//////////////////////////////////
+//End of Image Schema/////////////
+//////////////////////////////////
+
+
+//////////////////////////////////
+//File Schema/////////////////////
+//////////////////////////////////
+var FileSchema= new mongoose.Schema({
+	name:{type: String, required: false,unique: false,},
+	type:{type: String, required: false,unique: false,},
+	owner: {type: String, required: false,unique: false,},
+	size: Number,
+	url:{type: String, required: false,unique: false,},
+	local_path: String,
+	file_type:{type: String, required: false},
+	date_created : {type: Date},
+}),
+	File= mongoose.model('File',FileSchema);
 //////////////////////////////////
 //End of Image Schema/////////////
 //////////////////////////////////
@@ -927,12 +947,12 @@ exports.authenticateMessenger = function(req,res){
 			res.json({status: false, error: "not found", error_id:0});
 		}
 		else{
-			if(messenger.admin_confirmation != true){
-				res.json({status: false, error: "Este usuario aún no se encuentra activo.", error_id:101});
-				return;
-			}
 			//Verificamos que el hash guardado en password sea igual al password de entrada
 			if(security.compareHash(req.body.password, messenger.password)){
+				if(messenger.admin_confirmation != true){
+					res.json({status: false, error: "Este usuario aún no se encuentra activo.", error_id:101, response:{messenger_id:messenger._id, admin_confirmation: messenger.admin_confirmation}});
+					return;
+				}
 				//Acá se verifica si llega device info, y se agrega al device list del usuario
 				//En este punto ya se encuentra autenticado el mensajero, las respuestas siempre serán positivas
 				if(req.body.device_info){
@@ -2469,6 +2489,32 @@ exports.logoutUser = function(req,res){
 };
 //End of logout
 
+exports.addFile = function(req,res){
+	if(!req.body.type){
+		res.json({status:false, message:'Error. No type found.'});
+		return;
+	}
+	if(req.files && req.files.file){
+		Messenger.findOne({_id:req.params.messenger_id})
+		.exec(function(err,messenger){
+			if(err){
+				res.json({status:false, error:err});
+			}
+			else{
+				if(messenger){
+					uploadFile(res,req.files.file,messenger.email,messenger,req.body.type);
+				}
+				else{
+					res.json({status:false, response:null, message:'Messenger not found..'});
+				}
+			}
+		});
+	}
+	else{
+		res.json({status:false, response:null,message:'No file attached..'});
+	}
+};
+
 //////////////////////////////////
 //Verify//////////////////////////
 //////////////////////////////////
@@ -2756,6 +2802,92 @@ var uploadProfilePic = function(file,messenger,response){
 	    console.log('no hay imagen');
     }
 }
+
+var uploadFile = function(response,file,email,objectToSave,type){
+	//Verify the attachment
+	if(!file){
+		response.json({status: false, message:'No file attached.'});
+		return;
+	} 
+	var filePath = '';
+	var extension = '.'+file.name.split('.').pop();
+	var fileName = type+extension;  // Igualamos el nombre del archivo al tipo para evitar que se cree más de un archivo para un mismo item
+		
+	var amazonUrl = '';
+	var findSpace = ' ';
+	var regSpace = new RegExp(findSpace, 'g');
+	var findSpecial = '[\\+*?\\[\\^\\]$(){}=!<>|:]';
+	var regSpecial = new RegExp(findSpecial, 'g');
+
+	//Guardamos el path de la imagen en una variable
+	//Y verificamos su extensión para proceder con el guardado adecuado
+	var tmp_path_image_url = file.path;
+    
+    //Generamos una ruta de guardado temporal local
+	var target_path_image_url = './public/images/' + file.size + file.name;  
+	console.log("name:"+file.path)
+
+    if(file.size>0){
+		fs.renameSync(tmp_path_image_url,target_path_image_url);		
+		fs.stat(target_path_image_url, function(err, stat){
+		  
+			if(err){
+				console.log("error1 "+err);
+			}
+			else{
+				amazonUrl = 'messengers'+'/'+email+'/'+type+"/"+fileName;
+				amazonUrl = amazonUrl.replace(regSpace, '').replace(regSpecial, '');
+								
+				var req = client.put(amazonUrl, {
+					      'Content-Length': stat.size,
+					      'Content-Type': file.type,
+					      'x-amz-acl': 'public-read'
+				});
+				fs.createReadStream(target_path_image_url).pipe(req);
+				
+				req.on('response', function(res){
+					fs.unlink(target_path_image_url, function(){});
+					new File({
+						name: file.name,
+						type: type,
+						url: decodeURI(req.url),
+						local_path: amazonUrl,
+						owner: email,
+						size: file.size,
+						file_type: file.type,
+						date_created: new Date(),
+					}).save(function(err,newFile){	
+						if(err){
+						}
+						else{
+							if(!objectToSave.documents){
+								objectToSave.documents = {};			
+							}
+							objectToSave.set('documents.'+type, {
+								url : decodeURI(req.url),
+								file_id : newFile._id,
+								date_created : newFile.date_created
+							});
+											
+							objectToSave.save(function(err,result){
+								console.log("Error: ", result);
+									response.json({status: true, message:'File uploaded successfully.', response: {url:newFile.url}});
+							});												
+						}
+					});
+			  });
+			}
+		});
+	}
+    else{
+	    //Si el tamaño del adjunto no es mayor a 0 quiere decir que no hay adjunto
+	    console.log('no File');
+	    response.json({status: false, message:'No file attached.'});
+		return;
+    }
+}
+
+
 //Browser Account Redirect*//
 var browserAccountRedirect = function (req,res,data){
 //Esta sección detecta en que browser y sistema operativo se abre
