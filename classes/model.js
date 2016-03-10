@@ -1094,7 +1094,7 @@ var filtered_body = utils.remove_empty(req.body);
 	//Buscamos el usuario que se desea actualizar por medio de su _id
 	Messenger.findOneAndUpdate({_id:req.params.messenger_id},
 		//Seteamos el nuevo contenido
-	   {$set:filtered_body}, 
+	   {$set:filtered_body},{new:true}, 
 	   	function(err,object){
 	   	if(!object){
 		   	res.json({status: false, error: "not found"});
