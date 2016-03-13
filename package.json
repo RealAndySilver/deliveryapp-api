@@ -6,16 +6,16 @@
     "start": "nodemon mensajeria.js"
   },
   "dependencies": {
-    "express": "3.3.3",
-    "mongoose": "4.1.9",
-    "nodemailer": "0.7.1",
     "apn": "1.4.1",
+    "bcryptjs": "^2.3.0",
+    "colors": "*",
+    "express": "3.3.3",
+    "google-distance": "*",
     "knox": "*",
+    "mongoose": "4.1.9",
     "node-gcm": "*",
-    "bcrypt" : "0.8.0",
-    "colors" : "*",
-    "nodemon": "*",
-    "google-distance" : "*"
+    "nodemailer": "0.7.1",
+    "nodemon": "*"
   },
   "devDependencies": {},
   "subdomain": "iccknet-EventosCaracol",
