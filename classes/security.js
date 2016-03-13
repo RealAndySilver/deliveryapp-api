@@ -1,4 +1,4 @@
-var bcrypt = require('bcrypt');
+var bcrypt = require('bcryptjs');
 exports.passwordEncrypt = function (req, res, next) {
 	console.log("Entré al middleware: "+req.body.password);
 	if(req.body.password){
@@ -17,7 +17,7 @@ exports.base64 = function(data){
 	return new Buffer(data).toString('base64');
 };
 var encrypt = function(data){
-	//var bcrypt = require('bcrypt');
+	//var bcrypt = require('bcryptjs');
 	// Generate a salt
 	var salt = bcrypt.genSaltSync(10);
 	// Hash the password with the salt
