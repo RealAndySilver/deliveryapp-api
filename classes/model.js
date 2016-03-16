@@ -24,7 +24,7 @@ var imageUtilities = require('../classes/uploader');
 //////////////////////////////////
 //MongoDB Connection /////////////
 //////////////////////////////////
-mongoose.connect("mongodb://iAmUser:iAmStudio1@ds053788.mongolab.com:53788/mensajeria");
+mongoose.connect("mongodb://vueltap:vueltap123@ds015909.mlab.com:15909/vueltap");
 //////////////////////////////////
 //End of MongoDB Connection///////
 //////////////////////////////////
@@ -86,7 +86,8 @@ var CONSTANTS = {
 var limitForSort = 20;
 //Producción
 //var hostname = "192.241.187.135:2000";
-var webapp = "192.241.187.135:3000"
+var webapp = "192.185.136.242"
+var webRootFolder = "/~julian/vueltap/"
 //Dev
 var hostname = "192.241.187.135:2000";
 //var webapp = "192.241.187.135:3000";
@@ -259,6 +260,22 @@ var FileSchema= new mongoose.Schema({
 	File= mongoose.model('File',FileSchema);
 //////////////////////////////////
 //End of Image Schema/////////////
+//////////////////////////////////
+
+
+//////////////////////////////////
+//PaymentToken Schema/////////////
+//////////////////////////////////
+var PaymentTokenSchema= new mongoose.Schema({
+	token_id : {type: String, required:true,unique: true,},
+	user_id : {type: String, required:true},
+	card_last4:{type: String, required: true,unique: false,},
+	franchise: {type: String, required: true,unique: false,},
+	date_created : {type: Date},
+}),
+	PaymentToken= mongoose.model('PaymentToken',PaymentTokenSchema);
+//////////////////////////////////
+//End of PaymentToken Schema//////
 //////////////////////////////////
 
 //Development AMAZON BUCKET
@@ -902,6 +919,7 @@ utils.log("Messenger","Recibo:",JSON.stringify(req.body));
 		else{
 			//Una vez creado el documento en la base de datos procedemos a enviar un email
 			//de confirmación
+			mail.send("Bienvenido a Vueltap", "Ingrese sus documentos en la url http://"+webapp+webRootFolder+"/messenger/"+object.messenger_id+"/uploadFiles",req.body.email);
 			//emailVerification(req,object,'messenger');
 			utils.log("Messenger","Envío:",JSON.stringify(object));
 			res.json({status: true, message: "Mensajero creado exitosamente. Proceder a activar la cuenta.", response: object});
@@ -3174,6 +3192,32 @@ var notifyEvent = function(type,inputObject,status){
 };
 /////////////////////////////////
 //End of Functions///////////////
+/////////////////////////////////
+
+
+/////////////////////////////////
+//////// Payments ///////////////
+/////////////////////////////////
+
+exports.getPaymentMethodsByUser = function(req,res){
+	console.log ("User ",req.params.user_id);
+	var user=null
+	User.findOne({_id:req.params.user_id},exclude,function(err,object){
+		if(!object){
+			res.json({status: false, error: "User not found"});
+		}
+		else{
+			user=object;
+		}
+	});
+
+
+
+	res.json({status: true, response: "sucess"});
+}
+
+/////////////////////////////////
+//End of Payments ///////////////
 /////////////////////////////////
 
 /////////////////////////////////
