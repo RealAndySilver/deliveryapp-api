@@ -267,7 +267,7 @@ var FileSchema= new mongoose.Schema({
 //PaymentToken Schema/////////////
 //////////////////////////////////
 var PaymentTokenSchema= new mongoose.Schema({
-	token_id : {type: String, required:true,unique: true,},
+	token : {type: String, required:true,unique: true,},
 	user_id : {type: String, required:true},
 	card_last4:{type: String, required: true,unique: false,},
 	franchise: {type: String, required: true,unique: false,},
@@ -3201,19 +3201,15 @@ var notifyEvent = function(type,inputObject,status){
 
 exports.getPaymentMethodsByUser = function(req,res){
 	console.log ("User ",req.params.user_id);
-	var user=null
-	User.findOne({_id:req.params.user_id},exclude,function(err,object){
-		if(!object){
-			res.json({status: false, error: "User not found"});
-		}
-		else{
-			user=object;
+	PaymentToken.find({user_id:req.params.user_id})
+	.select('-token')
+	.exec(function(err,objects){
+		if(err){
+			res.json({status: false, error: "not found"});
+		}else{
+			res.json({status: true, response: objects});
 		}
 	});
-
-
-
-	res.json({status: true, response: "sucess"});
 }
 
 /////////////////////////////////
