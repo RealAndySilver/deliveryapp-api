@@ -91,12 +91,6 @@ app.put('/api_1.0/Messenger/Login', model.authenticateMessenger);
 app.post('/api_1.0/Messenger/Create', model.createMessenger);
 app.put('/api_1.0/Messenger/File/:messenger_id', model.addFile);
 
-
-app.get('/api_1.0/Payments/PaymentMethods/:user_id', model.getPaymentMethodsByUser);
-app.post('/api_1.0/Payments/CreatePaymentMethod', model.createPaymentMethod);
-
-
-
 //Session
 app.all('/api_1.0/*', model.verifySession);
 //User Read APIs
@@ -197,6 +191,8 @@ app.put('/api_1.0/User/Logout/:user_id', model.logoutUser);
 /////////                 Payments                     ////////////
 ///////////////////////////////////////////////////////////////////
 
+app.get('/api_1.0/Payments/PaymentMethods/:user_id', model.getPaymentMethodsByUser);
+app.post('/api_1.0/Payments/CreatePaymentMethod', model.createPaymentMethod);
 
 ///////////////////////////////////////////////////////////////////
 /////////                END PAYMENTS                   ///////////
