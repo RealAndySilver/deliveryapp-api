@@ -41,3 +41,13 @@ exports.createToken = function(user,card_number,cvv,exp_date){
 
 	return generateToken();
 };
+
+/*
+
+Function that connects with Place 2 Pay in order to obtain a new token
+
+*/
+exports.deleteToken = function(token){				
+
+	return;
+};

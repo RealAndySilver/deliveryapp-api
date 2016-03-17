@@ -3251,6 +3251,29 @@ exports.createPaymentMethod = function(req,res){
 }
 
 
+/*
+Servicio que elimina un metodo de pago asociado a un usuario
+*/
+exports.deletePaymentMethod = function(req,res){
+	PaymentToken.findOne({_id:req.params.pmt_method_id},exclude,function(err,object){
+		if(!object){
+			res.json({status: false, error: "Payment Method no existe"});
+		}
+		else{
+			payments.deleteToken(object.token);
+			PaymentToken.remove({_id:req.params.pmt_method_id},function(err){
+				if(err){
+					res.json({status: false, error: "Error eliminando Payment Method"});
+				}
+				else{
+					res.json({status: true, message: "Metodo de Pago eliminado exitosamente."});
+				}
+			});
+		}
+	});
+};
+
+
 /////////////////////////////////
 //End of Payments ///////////////
 /////////////////////////////////
