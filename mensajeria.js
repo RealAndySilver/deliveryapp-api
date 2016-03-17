@@ -92,7 +92,9 @@ app.post('/api_1.0/Messenger/Create', model.createMessenger);
 app.put('/api_1.0/Messenger/File/:messenger_id', model.addFile);
 
 
-app.get('/api_1.0/Payments/PaymentMethods/:user_id?', model.getPaymentMethodsByUser);
+app.get('/api_1.0/Payments/PaymentMethods/:user_id', model.getPaymentMethodsByUser);
+app.post('/api_1.0/Payments/CreatePaymentMethod', model.createPaymentMethod);
+
 
 
 //Session

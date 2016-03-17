@@ -10,6 +10,7 @@ var mail_template = require('../classes/mail_templates');
 var fs = require('fs');
 var express = require('express');
 var authentication = require('../classes/authentication');
+var payments = require('../classes/payments');
 var knox = require('knox');
 var gcm = require('node-gcm');
 var	security = require('../classes/security');
@@ -3199,8 +3200,11 @@ var notifyEvent = function(type,inputObject,status){
 //////// Payments ///////////////
 /////////////////////////////////
 
+/*
+Funcion que retorna los metodos de pagos disponibles por el id de usuario
+*/
 exports.getPaymentMethodsByUser = function(req,res){
-	console.log ("User ",req.params.user_id);
+	//console.log ("User ",req.params.user_id);
 	PaymentToken.find({user_id:req.params.user_id})
 	.select('-token')
 	.exec(function(err,objects){
@@ -3211,6 +3215,35 @@ exports.getPaymentMethodsByUser = function(req,res){
 		}
 	});
 }
+
+
+/*
+Funcion que crea un nuevo metodo de pago asociado a un usuario
+*/
+exports.createPaymentMethod = function(req,res){
+	utils.log("User/Create","Recibo:",JSON.stringify(req.body));
+
+	var token=payments.createToken(req.body.card_number,req.body.cvv,req.body.exp_date);
+
+	new PaymentToken({
+		user_id : req.body.user_id,
+		token : token,
+		card_last4 : req.body.card_number.substr(req.body.card_number.length-4, req.body.card_number.length),
+		franchise : req.body.franchise,
+		date_created: new Date(),
+	}).save(function(err,object){
+		if(err){
+			res.json({status: false, message: "Error al registrar el pago", err: err});
+		}
+		else{
+			utils.log("Payment Token Created","Envío:",JSON.stringify(object));
+			//Clear the token for never sending it to the FE
+			object.token='';
+			res.json({status: true, message: "Metodo de Pago creado exitosamente.", response: object});
+		}
+	});
+}
+
 
 /////////////////////////////////
 //End of Payments ///////////////
