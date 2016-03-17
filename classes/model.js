@@ -3221,25 +3221,31 @@ exports.getPaymentMethodsByUser = function(req,res){
 Funcion que crea un nuevo metodo de pago asociado a un usuario
 */
 exports.createPaymentMethod = function(req,res){
-	utils.log("User/Create","Recibo:",JSON.stringify(req.body));
+	utils.log("Payments/CreatePaymentMethod","Recibo:",JSON.stringify(req.body));
 
-	var token=payments.createToken(req.body.card_number,req.body.cvv,req.body.exp_date);
-
-	new PaymentToken({
-		user_id : req.body.user_id,
-		token : token,
-		card_last4 : req.body.card_number.substr(req.body.card_number.length-4, req.body.card_number.length),
-		franchise : req.body.franchise,
-		date_created: new Date(),
-	}).save(function(err,object){
-		if(err){
-			res.json({status: false, message: "Error al registrar el pago", err: err});
+	User.findOne({_id:req.body.user_id},exclude,function(err,object){
+		if(!object){
+			res.json({status: false, error: "User not found"});
 		}
 		else{
-			utils.log("Payment Token Created","Envío:",JSON.stringify(object));
-			//Clear the token for never sending it to the FE
-			object.token='';
-			res.json({status: true, message: "Metodo de Pago creado exitosamente.", response: object});
+			var token=payments.createToken(object,req.body.card_number,req.body.cvv,req.body.exp_date);
+			new PaymentToken({
+				user_id : req.body.user_id,
+				token : token,
+				card_last4 : req.body.card_number.substr(req.body.card_number.length-4, req.body.card_number.length),
+				franchise : req.body.franchise,
+				date_created: new Date(),
+			}).save(function(err,object){
+				if(err){
+					res.json({status: false, message: "Error al registrar el pago", err: err});
+				}
+				else{
+					utils.log("Payment Token Created","Envío:",JSON.stringify(object));
+					//Clear the token for never sending it to the FE
+					object.token='';
+					res.json({status: true, message: "Metodo de Pago creado exitosamente.", response: object});
+				}
+			});
 		}
 	});
 }
