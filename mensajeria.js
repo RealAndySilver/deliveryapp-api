@@ -194,6 +194,7 @@ app.put('/api_1.0/User/Logout/:user_id', model.logoutUser);
 app.get('/api_1.0/Payments/PaymentMethods/:user_id', model.getPaymentMethodsByUser);
 app.post('/api_1.0/Payments/CreatePaymentMethod', model.createPaymentMethod);
 app.delete('/api_1.0/Payments/DeletePaymentMethod/:pmt_method_id', model.deletePaymentMethod);
+app.get('/api_1.0/Payments/GetFranchiseByBIN/:bin', model.getFranchiseByBIN);
 
 ///////////////////////////////////////////////////////////////////
 /////////                END PAYMENTS                   ///////////
