@@ -3279,29 +3279,31 @@ exports.deletePaymentMethod = function(req,res){
 
 exports.getFranchiseByBIN = function (req,res){
     var franchise="";
-    var number=req.params.bin;
+    var number=req.params.bin?req.params.bin:"";
+
+    //VISA
     var re = new RegExp("^4");
     if (number.match(re) != null)
-        franchise= "Visa";
+        franchise= "VI";
 
     // Mastercard
     re = new RegExp("^5[1-5]");
     if (number.match(re) != null)
-        franchise= "Mastercard";
+        franchise= "MC";
 
     // AMEX
     re = new RegExp("^3[47]");
     if (number.match(re) != null)
-        franchise= "AMEX";
+        franchise= "AM";
 
     re = new RegExp("^36");
     if (number.match(re) != null)
-        franchise= "Diners";
+        franchise= "DI";
 
     // Visa Electron
     re = new RegExp("^(4026|417500|4508|4844|491(3|7))");
     if (number.match(re) != null)
-        franchise=  "Visa Electron";
+        franchise=  "VE";
 
     // Discover
     /*re = new RegExp("^(6011|622(12[6-9]|1[3-9][0-9]|[2-8][0-9]{2}|9[0-1][0-9]|92[0-5]|64[4-9])|65)");
