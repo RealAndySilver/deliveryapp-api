@@ -3279,7 +3279,7 @@ exports.deletePaymentMethod = function(req,res){
 
 exports.getFranchiseByBIN = function (req,res){
     var franchise=payments.getFranchiseByBIN(req.params.bin?req.params.bin:"");
-    res.json({status: false, response: franchise});
+    res.json({status: true, response: franchise});
 };
 
 /////////////////////////////////

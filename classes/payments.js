@@ -54,7 +54,7 @@ exports.deleteToken = function(token){
 
 
 exports.getFranchiseByBIN = function (number){
-    var franchise="";
+    var franchise="NA";
 
     //VISA
     var re = new RegExp("^4");
