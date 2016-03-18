@@ -3260,15 +3260,18 @@ exports.deletePaymentMethod = function(req,res){
 			res.json({status: false, error: "Payment Method no existe"});
 		}
 		else{
-			payments.deleteToken(object.token);
-			PaymentToken.remove({_id:req.params.pmt_method_id},function(err){
-				if(err){
-					res.json({status: false, error: "Error eliminando Payment Method"});
-				}
-				else{
-					res.json({status: true, message: "Metodo de Pago eliminado exitosamente."});
-				}
-			});
+			if (payments.deleteToken(object.token)){
+				PaymentToken.remove({_id:req.params.pmt_method_id},function(err){
+					if(err){
+						res.json({status: false, error: "Error eliminando Payment Method"});
+					}
+					else{
+						res.json({status: true, message: "Metodo de Pago eliminado exitosamente."});
+					}
+				});
+			}else{
+				res.json({status: false, error: "Error eliminando Payment Method en P2P"});
+			}
 		}
 	});
 };

@@ -49,5 +49,5 @@ Function that connects with Place 2 Pay in order to obtain a new token
 */
 exports.deleteToken = function(token){				
 
-	return;
+	return true;
 };
