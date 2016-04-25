@@ -15,7 +15,8 @@
     "mongoose": "4.1.9",
     "node-gcm": "*",
     "nodemailer": "0.7.1",
-    "nodemon": "*"
+    "nodemon": "*",
+    "soap": "^0.14.0"
   },
   "devDependencies": {},
   "subdomain": "iccknet-EventosCaracol",

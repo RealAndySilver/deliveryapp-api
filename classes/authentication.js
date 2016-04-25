@@ -90,12 +90,12 @@ exports.go = function(req,res,next,SchemaObject,type){
 						});
 					}
 					else{
-						res.json({status: true, response: "Session expired, please log in.", error: CONSTANTS.ERROR.SESSIONEXPIRED});
+						res.json({status: false, response: "Session expired, please log in.", error: CONSTANTS.ERROR.SESSIONEXPIRED});
 					}
 				}
 				else{
 					console.log('wrong pass');
-						res.json({status: true, response: "Bad authentication", error: CONSTANTS.ERROR.BADAUTH});
+						res.json({status: false, response: "Bad authentication", error: CONSTANTS.ERROR.BADAUTH});
 				}
 			}
 		});
