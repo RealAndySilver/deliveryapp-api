@@ -3228,24 +3228,26 @@ exports.createPaymentMethod = function(req,res){
 			res.json({status: false, error: "User not found"});
 		}
 		else{
-			var token=payments.createToken(object,req.body.card_number,req.body.cvv,req.body.exp_date);
-			new PaymentToken({
-				user_id : req.body.user_id,
-				token : token,
-				card_last4 : req.body.card_number.substr(req.body.card_number.length-4, req.body.card_number.length),
-				franchise : payments.getFranchiseByBIN(req.body.card_number),
-				date_created: new Date(),
-			}).save(function(err,object){
-				if(err){
-					res.json({status: false, message: "Error al registrar el pago", err: err});
-				}
-				else{
-					utils.log("Payment Token Created","Envío:",JSON.stringify(object));
-					//Clear the token for never sending it to the FE
-					object.token='';
-					res.json({status: true, message: "Metodo de Pago creado exitosamente.", response: object});
-				}
+				payments.createToken(object,req.body.card_number,req.body.cvv,req.body.exp_date,function(err, result, raw, soapHeader){
+				new PaymentToken({
+					user_id : req.body.user_id,
+					token : result.tokenizeCardResult.token,
+					card_last4 : req.body.card_number.substr(req.body.card_number.length-4, req.body.card_number.length),
+					franchise : payments.getFranchiseByBIN(req.body.card_number),
+					date_created: new Date(),
+				}).save(function(err,object){
+					if(err){
+						res.json({status: false, message: "Error al registrar el pago", err: err});
+					}
+					else{
+						utils.log("Payment Token Created","Envío:",JSON.stringify(object));
+						//Clear the token for never sending it to the FE
+						object.token='';
+						res.json({status: true, message: "Metodo de Pago creado exitosamente.", response: object});
+					}
+				});
 			});
+			
 		}
 	});
 }

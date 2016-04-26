@@ -1,3 +1,29 @@
+var soap = require('soap');
+var sha1 = require('sha1');
+var client=null;
+var initClient=function(){
+    if (!client){
+        var wsdlOptions = {
+  "overrideRootElement": {
+    "namespace": "tns"}};
+        var url = 'https://www.placetopay.com/soap/PlacetoPay/?wsdl';
+        var args = {name: 'value'};
+        soap.createClient(url,wsdlOptions, function(err, pClient) {
+        client=pClient;
+        //console.log("Client :",client);
+        //console.log(client.describe());
+      });
+    }
+    
+}
+
+initClient();
+
+var crateHash=function(seed){
+    var tranKey="44GdUHpa";
+    return sha1(seed+tranKey);
+}
+
 var generateToken = function(){
     var text = "";
     var possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
@@ -8,38 +34,51 @@ var generateToken = function(){
     return text;
 };
 
-
 /*
 
 Function that connects with Place 2 Pay in order to obtain a new token
 
 */
-exports.createToken = function(user,card_number,cvv,exp_date){
-	var authParams= {login:"vueltap",
-						trankey:"",
-						seed:"",
-						additional:[]};
+exports.createToken = function(user,card_number,cvv,exp_date,callback){
+    if (client){
+        var date = new Date();
+        var seed = date.toISOString();
 
-	var cardInfoParams= {number:card_number,
-						type:"C",
-						expiration:exp_date,
-						differed:12,
-						secureCode:cvv};
+        var authParams= {login:"13dd65d229afae2e65e9a94e301aa6dd",
+                        tranKey:crateHash(seed),
+                        seed: seed,
+                        additional:[]};
 
-	var personParams = 	{documentType:"CC",
-						document:"",
-						firstName:user.name,
-						lastName:user.lastName,
-						company:"",
-						emailAddress:user.email,
-						address: "",
-						city:"",
-						province :"",
-						country : "CO",
-						phone:"",
-						mobile:user.mobilephone};				
+        var cardInfoParams= {number:card_number,
+                        type:"C",
+                        expiration:exp_date,
+                        differed:12,
+                        secureCode:cvv};
 
-	return generateToken();
+        var personParams =  {documentType:"CC",
+                        document:"",
+                        firstName:user.name,
+                        lastName:user.lastName,
+                        company:"",
+                        emailAddress:user.email,
+                        address: "",
+                        city:"",
+                        province :"",
+                        country : "CO",
+                        phone:"",
+                        mobile:user.mobilephone};                   
+
+        var args = {auth:authParams,cardInfo:cardInfoParams,owner:personParams}                
+
+        client.tokenizeCard(args, function(err, result, raw, soapHeader) {
+            console.log(" LR ",client.lastRequest );
+            console.log(" RSLT ",result);
+            callback(err, result, raw, soapHeader);
+          
+      });
+    }else{
+         callback("ERROR");
+    }
 };
 
 /*

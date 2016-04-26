@@ -16,6 +16,7 @@
     "node-gcm": "*",
     "nodemailer": "0.7.1",
     "nodemon": "*",
+    "sha1": "^1.1.1",
     "soap": "^0.14.0"
   },
   "devDependencies": {},
