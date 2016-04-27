@@ -273,6 +273,7 @@ var PaymentTokenSchema= new mongoose.Schema({
 	card_last4:{type: String, required: true,unique: false,},
 	franchise: {type: String, required: true,unique: false,},
 	date_created : {type: Date},
+	valid_until : {type: Date},
 }),
 	PaymentToken= mongoose.model('PaymentToken',PaymentTokenSchema);
 //////////////////////////////////
@@ -3223,30 +3224,35 @@ Funcion que crea un nuevo metodo de pago asociado a un usuario
 exports.createPaymentMethod = function(req,res){
 	utils.log("Payments/CreatePaymentMethod","Recibo:",JSON.stringify(req.body));
 
-	User.findOne({_id:req.body.user_id},exclude,function(err,object){
+	User.findOne({_id:req.body.user_id},exclude,function(err1,object){
 		if(!object){
 			res.json({status: false, error: "User not found"});
 		}
 		else{
-				payments.createToken(object,req.body.card_number,req.body.cvv,req.body.exp_date,function(err, result, raw, soapHeader){
-				new PaymentToken({
+			payments.createToken(object,req.body.card_number,req.body.cvv,req.body.exp_date,function(err2, result, raw, soapHeader){
+				if (!err2){
+					new PaymentToken({
 					user_id : req.body.user_id,
 					token : result.tokenizeCardResult.token,
 					card_last4 : req.body.card_number.substr(req.body.card_number.length-4, req.body.card_number.length),
 					franchise : payments.getFranchiseByBIN(req.body.card_number),
 					date_created: new Date(),
-				}).save(function(err,object){
-					if(err){
-						res.json({status: false, message: "Error al registrar el pago", err: err});
-					}
-					else{
-						utils.log("Payment Token Created","Envío:",JSON.stringify(object));
-						//Clear the token for never sending it to the FE
-						object.token='';
-						res.json({status: true, message: "Metodo de Pago creado exitosamente.", response: object});
-					}
-				});
-			});
+					valid_until: result.tokenizeCardResult.validUntil,
+					}).save(function(err3,object){
+						if(err3){
+							res.json({status: false, message: "Error al registrar el metodo de pago", err: err3});
+						}
+						else{
+							utils.log("Payment Token Created","Envío:",JSON.stringify(object));
+							//Clear the token for never sending it to the FE
+							//object.token='';
+							res.json({status: true, message: "Metodo de Pago creado exitosamente.", response: object});
+						}
+					});
+				}else{
+				res.json({status: false, message: "Error al registrar el metodo de pago", err: err2});
+			}
+		});
 			
 		}
 	});
@@ -3262,18 +3268,21 @@ exports.deletePaymentMethod = function(req,res){
 			res.json({status: false, error: "Payment Method no existe"});
 		}
 		else{
-			if (payments.deleteToken(object.token)){
-				PaymentToken.remove({_id:req.params.pmt_method_id},function(err){
-					if(err){
-						res.json({status: false, error: "Error eliminando Payment Method"});
+			payments.deleteToken(object.token,function(err2, result, raw, soapHeader){
+				if (!err2 && result.invalidateTokenResult=='OK'){
+					PaymentToken.remove({_id:req.params.pmt_method_id},function(err3){
+					if(err3){
+						res.json({status: false, error: "Error eliminando Payment Method", err: err3});
 					}
 					else{
 						res.json({status: true, message: "Metodo de Pago eliminado exitosamente."});
 					}
 				});
-			}else{
-				res.json({status: false, error: "Error eliminando Payment Method en P2P"});
-			}
+				}else{
+					res.json({status: false, error: "Error eliminando Payment Method", err: result.invalidateTokenResult});
+				}
+				
+			});
 		}
 	});
 };

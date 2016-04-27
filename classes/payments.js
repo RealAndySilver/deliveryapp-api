@@ -1,6 +1,10 @@
 var soap = require('soap');
 var sha1 = require('sha1');
 var client=null;
+
+var CONSTANTS = {
+    P2P_PARAMS : {LOGIN:"13dd65d229afae2e65e9a94e301aa6dd",TRAN_KEY:"44GdUHpa"}};
+
 var initClient=function(){
     if (!client){
         var wsdlOptions = {
@@ -11,7 +15,7 @@ var initClient=function(){
         soap.createClient(url,wsdlOptions, function(err, pClient) {
         client=pClient;
         //console.log("Client :",client);
-        //console.log(client.describe());
+        console.log(client.describe());
       });
     }
     
@@ -20,8 +24,16 @@ var initClient=function(){
 initClient();
 
 var crateHash=function(seed){
-    var tranKey="44GdUHpa";
-    return sha1(seed+tranKey);
+    return sha1(seed+CONSTANTS.P2P_PARAMS.TRAN_KEY);
+}
+
+var createAuthObject=function(){
+    var date = new Date();
+    var seed = date.toISOString();
+    return {login:CONSTANTS.P2P_PARAMS.LOGIN,
+                        tranKey:crateHash(seed),
+                        seed: seed,
+                        additional:[]};
 }
 
 var generateToken = function(){
@@ -41,13 +53,6 @@ Function that connects with Place 2 Pay in order to obtain a new token
 */
 exports.createToken = function(user,card_number,cvv,exp_date,callback){
     if (client){
-        var date = new Date();
-        var seed = date.toISOString();
-
-        var authParams= {login:"13dd65d229afae2e65e9a94e301aa6dd",
-                        tranKey:crateHash(seed),
-                        seed: seed,
-                        additional:[]};
 
         var cardInfoParams= {number:card_number,
                         type:"C",
@@ -68,29 +73,52 @@ exports.createToken = function(user,card_number,cvv,exp_date,callback){
                         phone:"",
                         mobile:user.mobilephone};                   
 
-        var args = {auth:authParams,cardInfo:cardInfoParams,owner:personParams}                
+        var args = {auth:createAuthObject(),cardInfo:cardInfoParams,owner:personParams}                
 
         client.tokenizeCard(args, function(err, result, raw, soapHeader) {
-            console.log(" LR ",client.lastRequest );
-            console.log(" RSLT ",result);
+            //console.log(" LR ",client.lastRequest );
+            //console.log(" RSLT ",result);
             callback(err, result, raw, soapHeader);
-          
       });
     }else{
-         callback("ERROR");
+         callback("SOAP client not initialized");
     }
 };
 
 /*
 
-Function that connects with Place 2 Pay in order to obtain a new token
+Function that connects with Place 2 Pay in order to remove an existing token
 
 */
-exports.deleteToken = function(token){				
-
-	return true;
+exports.deleteToken = function(token,callback){				
+    if (client){
+        var args = {auth:createAuthObject(),token:token};
+        client.invalidateToken(args, function(err, result, raw, soapHeader) {
+            //console.log(" LR ",client.lastRequest );
+            //console.log(" RSLT ",result);
+            callback(err, result, raw, soapHeader);
+      });
+    }else{
+         callback("SOAP client not initialized");
+    }
 };
 
+/*
+Fucntion that connects with P2P for making an actual charge to the credit card associated
+to a token
+*/
+exports.chargePaymentUsingToken=function(token,amount,callback){
+    if (client){
+        var args = {auth:createAuthObject(),token:token};
+        client.invalidateToken(args, function(err, result, raw, soapHeader) {
+            //console.log(" LR ",client.lastRequest );
+            //console.log(" RSLT ",result);
+            callback(err, result, raw, soapHeader);
+      });
+    }else{
+         callback("SOAP client not initialized");
+    }
+};
 
 exports.getFranchiseByBIN = function (number){
     var franchise="NA";
