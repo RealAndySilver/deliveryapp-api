@@ -195,6 +195,7 @@ app.get('/api_1.0/Payments/PaymentMethods/:user_id', model.getPaymentMethodsByUs
 app.post('/api_1.0/Payments/CreatePaymentMethod', model.createPaymentMethod);
 app.delete('/api_1.0/Payments/DeletePaymentMethod/:pmt_method_id', model.deletePaymentMethod);
 app.get('/api_1.0/Payments/GetFranchiseByBIN/:bin', model.getFranchiseByBIN);
+app.post('/api_1.0/Payments/CapturePaymentUsingToken', model.capturePaymentUsingToken);
 
 ///////////////////////////////////////////////////////////////////
 /////////                END PAYMENTS                   ///////////

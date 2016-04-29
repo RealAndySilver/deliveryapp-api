@@ -3223,7 +3223,6 @@ Funcion que crea un nuevo metodo de pago asociado a un usuario
 */
 exports.createPaymentMethod = function(req,res){
 	utils.log("Payments/CreatePaymentMethod","Recibo:",JSON.stringify(req.body));
-
 	User.findOne({_id:req.body.user_id},exclude,function(err1,object){
 		if(!object){
 			res.json({status: false, error: "User not found"});
@@ -3245,7 +3244,7 @@ exports.createPaymentMethod = function(req,res){
 						else{
 							utils.log("Payment Token Created","Envío:",JSON.stringify(object));
 							//Clear the token for never sending it to the FE
-							//object.token='';
+							object.token='';
 							res.json({status: true, message: "Metodo de Pago creado exitosamente.", response: object});
 						}
 					});
@@ -3292,6 +3291,23 @@ exports.getFranchiseByBIN = function (req,res){
     var franchise=payments.getFranchiseByBIN(req.params.bin?req.params.bin:"");
     res.json({status: true, response: franchise});
 };
+
+exports.capturePaymentUsingToken = function (req,res){
+	User.findOne({_id:req.body.user_id},exclude,function(err1,object){
+		if(!object){
+			res.json({status: false, error: "User not found"});
+		}
+		else{
+			payments.capturePaymentUsingToken(req.body.token,req.body.customerIP,req.body.invoiceNum,req.body.amount,object,function(error,body){
+				if (error){
+					res.json({status: false, err: error});
+				}else{
+					res.json({status: true, msg: body});
+				}
+			});		
+		}
+	});
+	};
 
 /////////////////////////////////
 //End of Payments ///////////////

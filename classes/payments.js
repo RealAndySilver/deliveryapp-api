@@ -1,17 +1,32 @@
 var soap = require('soap');
 var sha1 = require('sha1');
+var request = require("request");
+
 var client=null;
 
 var CONSTANTS = {
-    P2P_PARAMS : {LOGIN:"13dd65d229afae2e65e9a94e301aa6dd",TRAN_KEY:"44GdUHpa"}};
+    P2P_PARAMS :    {
+                    LOGIN:"13dd65d229afae2e65e9a94e301aa6dd",
+                    TRAN_KEY:"44GdUHpa",
+                    P2P_URL_FORM:"https://www.placetopay.com/gateway/paymentdirect.php",
+                    P2P_URL_WSDL:"https://www.placetopay.com/soap/PlacetoPay/?wsdl",
+                    IS_DEV:'TRUE',
+                    TRN_TYPES:
+                                {
+                                    AUTH_ONLY:'AUTH_ONLY' ,
+                                    CAPTURE_ONLY:'CAPTURE_ONLY',
+                                    SETTLE:'SETTLE',
+                                    VOID:'VOID'       
+                                }
+                    }
+                };
 
 var initClient=function(){
     if (!client){
         var wsdlOptions = {
   "overrideRootElement": {
     "namespace": "tns"}};
-        var url = 'https://www.placetopay.com/soap/PlacetoPay/?wsdl';
-        var args = {name: 'value'};
+        var url = CONSTANTS.P2P_PARAMS.P2P_URL_WSDL;
         soap.createClient(url,wsdlOptions, function(err, pClient) {
         client=pClient;
         //console.log("Client :",client);
@@ -23,7 +38,11 @@ var initClient=function(){
 
 initClient();
 
-var crateHash=function(seed){
+var createHash=function(seed){
+    if(!seed){
+        var date = new Date();
+        seed = date.toISOString();
+    }
     return sha1(seed+CONSTANTS.P2P_PARAMS.TRAN_KEY);
 }
 
@@ -31,10 +50,46 @@ var createAuthObject=function(){
     var date = new Date();
     var seed = date.toISOString();
     return {login:CONSTANTS.P2P_PARAMS.LOGIN,
-                        tranKey:crateHash(seed),
+                        tranKey:createHash(seed),
                         seed: seed,
                         additional:[]};
 }
+
+var createFormData=function(trnType,token,customerIP,invoiceNum,amount,customer){
+
+    return {x_version: '2.0',
+            x_delim_data: 'TRUE',
+            x_relay_response: 'FALSE',
+            x_login: CONSTANTS.P2P_PARAMS.LOGIN,
+            x_tran_key: CONSTANTS.P2P_PARAMS.TRAN_KEY,
+            x_test_request: CONSTANTS.P2P_PARAMS.IS_DEV,
+            x_type: trnType,
+            x_method: 'CC',
+            x_customer_ip: customerIP,
+            x_invoice_num: invoiceNum,
+            x_amount: amount,
+            x_tax: '0',
+            x_amount_base: '0',
+            x_token: token,
+            //x_card_type: 'C',
+            x_card_code: '123',
+            x_differed: '1',
+            x_cust_id: customer._id+'',
+            x_first_name: customer.name+'',
+            x_currency_code: 'COP',
+            /*'x_additional_data[Destino]': '0',
+            'x_additional_data[Ruta]': '0',
+            'x_additional_data[Origen]': '0',
+            'x_additional_data[Fecha de Salida]': '0',
+            'x_additional_data[Fecha de Regreso]': '0',
+            'x_additional_data[Escalas]': '0',
+            'x_additional_data[Clase de Tarifa]': '0',
+            'x_additional_data[Tipo de Ruta]': '0',
+            'x_additional_data[Cabina]': '0',
+            'x_additional_data[Promocional]': '0',
+            'x_additional_data[# de Viajero Frecuente]': '0',
+            'x_additional_data[Hora de Salida]': '0' */}   
+};
 
 var generateToken = function(){
     var text = "";
@@ -104,20 +159,25 @@ exports.deleteToken = function(token,callback){
 };
 
 /*
-Fucntion that connects with P2P for making an actual charge to the credit card associated
+Fucntion that connects with P2P for making an CAPTURE_ONLY charge to the credit card associated
 to a token
 */
-exports.chargePaymentUsingToken=function(token,amount,callback){
-    if (client){
-        var args = {auth:createAuthObject(),token:token};
-        client.invalidateToken(args, function(err, result, raw, soapHeader) {
-            //console.log(" LR ",client.lastRequest );
-            //console.log(" RSLT ",result);
-            callback(err, result, raw, soapHeader);
-      });
-    }else{
-         callback("SOAP client not initialized");
-    }
+exports.capturePaymentUsingToken=function(token,customerIP,invoiceNum,amount,customer,callback){
+
+    var options = { method: 'POST',
+        url: CONSTANTS.P2P_PARAMS.P2P_URL_FORM,
+        headers: 
+        {   //'postman-token': '15592359-7706-eb9c-ef2f-57f78eba273c',
+            'cache-control': 'no-cache',
+            'content-type': 'multipart/form-data; boundary=---011000010111000001101001' },
+            formData: createFormData(CONSTANTS.P2P_PARAMS.TRN_TYPES.CAPTURE_ONLY,token,customerIP,invoiceNum,amount,customer)
+        };
+
+    request(options, function (error, response, body) {
+        callback(error,body);
+    });
+
+
 };
 
 exports.getFranchiseByBIN = function (number){
