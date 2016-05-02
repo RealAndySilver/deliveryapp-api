@@ -78,6 +78,10 @@ var CONSTANTS = {
 		CERT : 'cert',
 		KEY : 'key'
 	},
+	PMNT_METHODS : {
+		CASH : 'cash',
+		CREDIT : 'credit'
+	},
 	ERROR: {
 		BADAUTH : 'a1',
 		SESSIONEXPIRED : 'a2',
@@ -210,6 +214,8 @@ var DeliveryItemSchema= new mongoose.Schema({
 	declared_value : {type: Number, required:false},
 	price_to_pay : {type: Number, required:false},
 	payment_method : {type: String, required:false}, //credit , cash
+	payment_token_id : {type: String, required:false},
+	p2p_trn_id : {type: String, required:false}, //stores the transaction id sent by p2p
 	overall_status : {type: String, required:true}, //requested,started, finished
 	status : {type: String, required:true}, //available, accepted, in-transit, delivered, returning, returned, aborted
 	pickup_time : {type: Date, required:false},
@@ -1307,14 +1313,48 @@ utils.log("Delivery","Recibo:",JSON.stringify(req.body));
 		time_to_deliver: req.body.time_to_deliver,
 		rated : false,
 		images : [],
-	}).save(function(err,object){
+		payment_token_id:req.body.token_id,
+	}).save(function(err,dlvrItem){
 		if(err){
-			res.json(err);
+			res.json({status: false, message: "Error creando pedido.", response: err});
 		}
 		else{
 			//utils.log("Messenger","Envío:",JSON.stringify(object));
-			User.findOneAndUpdate({_id:object.user_id},{$inc:{"stats.created_services":1}}, function(err, user){
-				res.json({status: true, message: "Pedido creado exitosamente.", response: object});
+			User.findOneAndUpdate({_id:dlvrItem.user_id},{$inc:{"stats.created_services":1}}, function(errFndUpd, user){
+				if (!errFndUpd){
+					if (req.body.payment_method === CONSTANTS.PMNT_METHODS.CREDIT){
+						PaymentToken.findOne({_id:req.body.token_id},function(errPmtTkn,pmntToken){
+							if (!errPmtTkn){
+								payments.capturePaymentUsingToken(pmntToken.token,req.body.ip_address,'123456',req.body.price_to_pay,user,function(errorCreatePmnt,resPmt){
+								console.log("Respuesta ",resPmt);
+								if (!errorCreatePmnt && resPmt[0]=='3'){
+									DeliveryItem.findOneAndUpdate({_id:dlvrItem._id},
+				   									{"p2p_trn_id":resPmt[6]}, 
+				   									function(errUpdate, object){
+				   										if (!errUpdate){
+				   											res.json({status: true, message: "Pedido creado exitosamente.", response: dlvrItem});
+				   										}else{
+				   											console.log("ERROR ACTUALIZANDO ",errUpdate);
+				   											res.json({status: true, message: "Pedido creado exitosamente. Con fallas en el pago", response: dlvrItem});
+				   										}
+				   										
+					   								});	
+								}else{
+									console.log("ERROR ENVIANDO PAGO ",errorCreatePmnt);
+									res.json({status: true, message: "Pedido creado exitosamente. Con fallas en el pago", response: dlvrItem});
+								}
+								});	
+							}else{
+								res.json({status: false, message: "Error creando pedido.", response: errPmtTkn});
+							}
+						});
+						}else{
+							res.json({status: true, message: "Pedido creado exitosamente.", response: dlvrItem});
+						}	
+					}else{
+						res.json({status: false, message: "Error creando pedido.", response: errFndUpd});
+					}
+					
 			});
 		}
 	});
@@ -3298,6 +3338,8 @@ exports.capturePaymentUsingToken = function (req,res){
 			res.json({status: false, error: "User not found"});
 		}
 		else{
+			//console.log ("IP ",req.headers); 
+			//console.log("IP 2 ", req.connection);
 			payments.capturePaymentUsingToken(req.body.token,req.body.customerIP,req.body.invoiceNum,req.body.amount,object,function(error,body){
 				if (error){
 					res.json({status: false, err: error});

@@ -55,7 +55,7 @@ var createAuthObject=function(){
                         additional:[]};
 }
 
-var createFormData=function(trnType,token,customerIP,invoiceNum,amount,customer){
+var createFormDataCaptOnly=function(token,customerIP,invoiceNum,amount,customer){
 
     return {x_version: '2.0',
             x_delim_data: 'TRUE',
@@ -63,7 +63,7 @@ var createFormData=function(trnType,token,customerIP,invoiceNum,amount,customer)
             x_login: CONSTANTS.P2P_PARAMS.LOGIN,
             x_tran_key: CONSTANTS.P2P_PARAMS.TRAN_KEY,
             x_test_request: CONSTANTS.P2P_PARAMS.IS_DEV,
-            x_type: trnType,
+            x_type: CONSTANTS.P2P_PARAMS.TRN_TYPES.CAPTURE_ONLY,
             x_method: 'CC',
             x_customer_ip: customerIP,
             x_invoice_num: invoiceNum,
@@ -72,7 +72,7 @@ var createFormData=function(trnType,token,customerIP,invoiceNum,amount,customer)
             x_amount_base: '0',
             x_token: token,
             //x_card_type: 'C',
-            x_card_code: '123',
+            //cx_card_code: '123',
             x_differed: '1',
             x_cust_id: customer._id+'',
             x_first_name: customer.name+'',
@@ -163,18 +163,18 @@ Fucntion that connects with P2P for making an CAPTURE_ONLY charge to the credit 
 to a token
 */
 exports.capturePaymentUsingToken=function(token,customerIP,invoiceNum,amount,customer,callback){
-
+    var formData=createFormDataCaptOnly(token,customerIP,invoiceNum,amount,customer);
+    //console.log("Data to send ",formData);    
     var options = { method: 'POST',
         url: CONSTANTS.P2P_PARAMS.P2P_URL_FORM,
         headers: 
         {   //'postman-token': '15592359-7706-eb9c-ef2f-57f78eba273c',
             'cache-control': 'no-cache',
             'content-type': 'multipart/form-data; boundary=---011000010111000001101001' },
-            formData: createFormData(CONSTANTS.P2P_PARAMS.TRN_TYPES.CAPTURE_ONLY,token,customerIP,invoiceNum,amount,customer)
-        };
+            formData: formData};
 
     request(options, function (error, response, body) {
-        callback(error,body);
+        callback(error,body.split(','));
     });
 
 
