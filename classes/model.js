@@ -1397,7 +1397,7 @@ utils.log("Delivery","Recibo:",JSON.stringify(req.body));
 };
 
 
-var createDeliveryItemHelper = function(req,res,trn_id){
+var createDeliveryItemHelper = function(req,res,trnId){
 	//Creamos de manera correcta los objetos GEO para guardarlos en la base de datos
 	var pickup_location = utils.convertInGeoObject(req.body.pickup_object);
 	var delivery_location = utils.convertInGeoObject(req.body.delivery_object);
@@ -1430,7 +1430,7 @@ var createDeliveryItemHelper = function(req,res,trn_id){
 		rated : false,
 		images : [],
 		payment_token_id:req.body.token_id,
-		trn_id:trnObject._id,}).save(
+		trn_id:trnId,}).save(
 	function(errCrtDlvrItm,dlvrItem){
 		if (!errCrtDlvrItm){
 			User.findOneAndUpdate({_id:dlvrItem.user_id},{$inc:{"stats.created_services":1}}, 
