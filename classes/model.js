@@ -36,6 +36,7 @@ mongoose.connect("mongodb://vueltap:vueltap123@ds015909.mlab.com:15909/vueltap")
 var exclude = {/*password:*/};
 var verifyEmailVar = true;
 var CONSTANTS = {
+	DISCLAIMER_PATH:'http://192.185.136.242/~julian/shared/TermsVUELTAP_V5.pdf',
 	P2P: {STATUS:{ERROR:'0',APPROVED:'1',REJECTED:'2',PENDING:'3'}},
 	STATUS : {
 		SYSTEM : {
@@ -3249,6 +3250,16 @@ exports.getInsuranceIntervals = function(req,res){
 	
 	res.json({status: true, response: insuranceIntervals});
 }
+
+/*
+Returns the PDF to be displayed over the agreement screen
+*/
+exports.getDisclarimerPDF = function (req,res){
+	res.writeHead(301,{Location: CONSTANTS.DISCLAIMER_PATH});
+	res.end();
+};
+
+
 //Notifier
 var notifyEvent = function(type,inputObject,status){
 
