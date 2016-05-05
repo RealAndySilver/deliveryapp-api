@@ -1292,9 +1292,6 @@ utils.log("Delivery","Recibo:",JSON.stringify(req.body));
 	else{
 		res.json({status: false, message: "El objeto delivery_object viene incompleto."});
 	}
-	//Creamos de manera correcta los objetos GEO para guardarlos en la base de datos
-	var pickup_location = utils.convertInGeoObject(req.body.pickup_object);
-	var delivery_location = utils.convertInGeoObject(req.body.delivery_object);
 
 
 	//New Implementacion
@@ -1401,6 +1398,9 @@ utils.log("Delivery","Recibo:",JSON.stringify(req.body));
 
 
 var createDeliveryItemHelper = function(req,res,trn_id){
+	//Creamos de manera correcta los objetos GEO para guardarlos en la base de datos
+	var pickup_location = utils.convertInGeoObject(req.body.pickup_object);
+	var delivery_location = utils.convertInGeoObject(req.body.delivery_object);
 	new DeliveryItem({
 		user_id : req.body.user_id,
 		user_info: req.body.user_info,
