@@ -36,6 +36,7 @@ mongoose.connect("mongodb://vueltap:vueltap123@ds015909.mlab.com:15909/vueltap")
 var exclude = {/*password:*/};
 var verifyEmailVar = true;
 var CONSTANTS = {
+	P2P: {STATUS:{ERROR:'0',APPROVED:'1',REJECTED:'2',PENDING:'3'}},
 	STATUS : {
 		SYSTEM : {
 			AVAILABLE : 'available',
@@ -215,7 +216,7 @@ var DeliveryItemSchema= new mongoose.Schema({
 	price_to_pay : {type: Number, required:false},
 	payment_method : {type: String, required:false}, //credit , cash
 	payment_token_id : {type: String, required:false},
-	p2p_trn_id : {type: String, required:false}, //stores the transaction id sent by p2p
+	trn_id : {type: String, required:false}, //stores the transaction id sent by p2p
 	overall_status : {type: String, required:true}, //requested,started, finished
 	status : {type: String, required:true}, //available, accepted, in-transit, delivered, returning, returned, aborted
 	pickup_time : {type: Date, required:false},
@@ -285,6 +286,16 @@ var PaymentTokenSchema= new mongoose.Schema({
 //////////////////////////////////
 //End of PaymentToken Schema//////
 //////////////////////////////////
+
+//////////////////////////////////
+//SubDocumentSchema///////////////
+//////////////////////////////////
+var PlaceToPayTrnSchema = new mongoose.Schema({user_id : {type: String, required:true},p2p_trn_id:String, p2p_response:String, date_sent:String, status:String});
+PlaceToPayTrn= mongoose.model('PlaceToPayTrn',PlaceToPayTrnSchema);
+//////////////////////////////////
+//End SubDocumentSchema///////////
+//////////////////////////////////
+
 
 //Development AMAZON BUCKET
 var client = knox.createClient({
@@ -1284,8 +1295,36 @@ utils.log("Delivery","Recibo:",JSON.stringify(req.body));
 	//Creamos de manera correcta los objetos GEO para guardarlos en la base de datos
 	var pickup_location = utils.convertInGeoObject(req.body.pickup_object);
 	var delivery_location = utils.convertInGeoObject(req.body.delivery_object);
+
+
+	//New Implementacion
+	if (req.body.payment_method === CONSTANTS.PMNT_METHODS.CREDIT){
+		payments.capturePaymentUsingToken(pmntToken.token,req.body.ip_address,'123456',req.body.price_to_pay,user,
+		function(errorCreatePmnt,resPmt){
+			if (!errorCreatePmnt){
+				new PlaceToPayTrn({user_id : req.body.user_id,p2p_trn_id:resPmt[6], p2p_response:resPmt, date_sent:new Date(), status:resPmt[0]}).save(
+				function(errCreateTrn,trnObject){
+					if (!errCreateTrn){
+						if (trnObject.status==CONSTANTS.P2P.STATUS.PENDING){
+							createDeliveryItemHelper(req,res,trnObject._id);
+						}else{
+							res.json({status: false, message: "Error creando pedido.", response: "Transaccion rechazada en Place to Pay"});
+						}
+					}else{
+						res.json({status: false, message: "Error creando pedido.", response: errCreateTrn});
+					}
+				});
+			}else{
+				res.json({status: false, message: "Error creando pedido.", response: errorCreatePmnt});
+			}
+		});
+	}else{
+		createDeliveryItemHelper(req,res,"");
+	}
+
+	//END
 	
-	new DeliveryItem({
+	/*new DeliveryItem({
 		user_id : req.body.user_id,
 		user_info: req.body.user_info,
 		item_name: req.body.item_name,
@@ -1329,7 +1368,7 @@ utils.log("Delivery","Recibo:",JSON.stringify(req.body));
 								console.log("Respuesta ",resPmt);
 								if (!errorCreatePmnt && resPmt[0]=='3'){
 									DeliveryItem.findOneAndUpdate({_id:dlvrItem._id},
-				   									{"p2p_trn_id":resPmt[6]}, 
+				   									{"trn_id":trnObject._id}, 
 				   									function(errUpdate, object){
 				   										if (!errUpdate){
 				   											res.json({status: true, message: "Pedido creado exitosamente.", response: dlvrItem});
@@ -1357,8 +1396,57 @@ utils.log("Delivery","Recibo:",JSON.stringify(req.body));
 					
 			});
 		}
+	});*/
+};
+
+
+var createDeliveryItemHelper = function(req,res,trn_id){
+	new DeliveryItem({
+		user_id : req.body.user_id,
+		user_info: req.body.user_info,
+		item_name: req.body.item_name,
+		date_created: new Date(),
+		pickup_location : pickup_location,
+		pickup_details : req.body.pickup_details,
+		pickup_object: req.body.pickup_object,
+		delivery_location : delivery_location,	
+		delivery_details : req.body.delivery_details,
+		delivery_object: req.body.delivery_object,
+		roundtrip: req.body.roundtrip,
+		send_image: req.body.send_image,
+		send_signature: req.body.send_signature,
+		signature_object: {status:false, signatureB64:''},
+		insurance: req.body.insurance,
+		insurancevalue: req.body.insurancevalue,
+		instructions : req.body.instructions,
+		priority: req.body.priority,
+		declared_value : req.body.declared_value,
+		price_to_pay : req.body.price_to_pay,
+		payment_method : req.body.payment_method,
+		overall_status : CONSTANTS.OVERALLSTATUS.REQUESTED,
+		status : CONSTANTS.STATUS.SYSTEM.AVAILABLE,
+		time_to_pickup : req.body.time_to_pickup,
+		time_to_deliver: req.body.time_to_deliver,
+		rated : false,
+		images : [],
+		payment_token_id:req.body.token_id,
+		trn_id:trnObject._id,}).save(
+	function(errCrtDlvrItm,dlvrItem){
+		if (!errCrtDlvrItm){
+			User.findOneAndUpdate({_id:dlvrItem.user_id},{$inc:{"stats.created_services":1}}, 
+			function(errFndUpdUsr, user){
+				if (!errFndUpdUsr){
+					res.json({status: true, message: "Pedido creado exitosamente.", response: dlvrItem});
+				}else{
+					res.json({status: false, message: "Error creando pedido.", response: errFndUpdUsr});
+				}
+			});
+		}else{
+			res.json({status: false, message: "Error creando pedido.", response: errCrtDlvrItm});
+		}
 	});
 };
+
 //Read One
 exports.getDeliveryItemByID = function(req,res){
 	//Esta función expone un servicio para buscar un DeliveryItem por id
@@ -3333,7 +3421,7 @@ exports.getFranchiseByBIN = function (req,res){
 };
 
 exports.capturePaymentUsingToken = function (req,res){
-	User.findOne({_id:req.body.user_id},exclude,function(err1,object){
+	/*User.findOne({_id:req.body.user_id},exclude,function(err1,object){
 		if(!object){
 			res.json({status: false, error: "User not found"});
 		}
@@ -3348,7 +3436,10 @@ exports.capturePaymentUsingToken = function (req,res){
 				}
 			});		
 		}
-	});
+	});*/
+	payments.settleTransaction("000000");
+	res.json({status: true});
+
 	};
 
 /////////////////////////////////

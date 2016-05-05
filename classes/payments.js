@@ -159,6 +159,28 @@ exports.deleteToken = function(token,callback){
 };
 
 /*
+    Function that settle a previously CAPTURE trn using the capturePaymentUsingToken
+*/
+exports.settleTransaction = function(trnId){
+    if (client){
+                  
+        var args = {auth:createAuthObject(),transactionID:trnId}                
+
+        client.settleCardTransaction(args, function(err, result, raw, soapHeader) {
+            console.log(" LR ",client.lastRequest );
+            //console.log(" RSLT ",result);
+            //callback(err, result, raw, soapHeader);
+            //console.log("ERR ",err);
+            //console.log("result ",result);
+            //console.log("RAW",raw);
+      });
+    }else{
+         callback("SOAP client not initialized");
+    }
+};
+
+
+/*
 Fucntion that connects with P2P for making an CAPTURE_ONLY charge to the credit card associated
 to a token
 */
@@ -176,8 +198,6 @@ exports.capturePaymentUsingToken=function(token,customerIP,invoiceNum,amount,cus
     request(options, function (error, response, body) {
         callback(error,body.split(','));
     });
-
-
 };
 
 exports.getFranchiseByBIN = function (number){
