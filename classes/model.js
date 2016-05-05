@@ -1296,25 +1296,32 @@ utils.log("Delivery","Recibo:",JSON.stringify(req.body));
 
 	//New Implementacion
 	if (req.body.payment_method === CONSTANTS.PMNT_METHODS.CREDIT){
-		payments.capturePaymentUsingToken(pmntToken.token,req.body.ip_address,'123456',req.body.price_to_pay,user,
-		function(errorCreatePmnt,resPmt){
-			if (!errorCreatePmnt){
-				new PlaceToPayTrn({user_id : req.body.user_id,p2p_trn_id:resPmt[6], p2p_response:resPmt, date_sent:new Date(), status:resPmt[0]}).save(
-				function(errCreateTrn,trnObject){
-					if (!errCreateTrn){
-						if (trnObject.status==CONSTANTS.P2P.STATUS.PENDING){
-							createDeliveryItemHelper(req,res,trnObject._id);
+		PaymentToken.findOne({_id:req.body.token_id},
+			function(errPmtTkn,pmntToken){
+				if (!errPmtTkn){
+					payments.capturePaymentUsingToken(pmntToken.token,req.body.ip_address,'123456',req.body.price_to_pay,user,
+					function(errorCreatePmnt,resPmt){
+						if (!errorCreatePmnt){
+							new PlaceToPayTrn({user_id : req.body.user_id,p2p_trn_id:resPmt[6], p2p_response:resPmt, date_sent:new Date(), status:resPmt[0]}).save(
+							function(errCreateTrn,trnObject){
+								if (!errCreateTrn){
+									if (trnObject.status==CONSTANTS.P2P.STATUS.PENDING){
+										createDeliveryItemHelper(req,res,trnObject._id);
+									}else{
+										res.json({status: false, message: "Error creando pedido.", response: "Transaccion rechazada en Place to Pay"});
+									}
+								}else{
+									res.json({status: false, message: "Error creando pedido.", response: errCreateTrn});
+								}
+							});
 						}else{
-							res.json({status: false, message: "Error creando pedido.", response: "Transaccion rechazada en Place to Pay"});
+							res.json({status: false, message: "Error creando pedido.", response: errorCreatePmnt});
 						}
-					}else{
-						res.json({status: false, message: "Error creando pedido.", response: errCreateTrn});
-					}
-				});
-			}else{
-				res.json({status: false, message: "Error creando pedido.", response: errorCreatePmnt});
-			}
-		});
+					});
+				}else{
+					res.json({status: false, message: "Error creando pedido.", response: errPmtTkn});
+				}
+			});
 	}else{
 		createDeliveryItemHelper(req,res,"");
 	}
