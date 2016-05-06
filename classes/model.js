@@ -25,7 +25,10 @@ var imageUtilities = require('../classes/uploader');
 //////////////////////////////////
 //MongoDB Connection /////////////
 //////////////////////////////////
-mongoose.connect("mongodb://vueltap:vueltap123@ds015909.mlab.com:15909/vueltap");
+//test Iam studio
+//mongoose.connect("mongodb://vueltap:vueltap123@ds015909.mlab.com:15909/vueltap");
+//Test Vueltap
+mongoose.connect("mongodb://iAmUser:iAmStudio1@ds015942.mlab.com:15942/vueltap-dev");
 //////////////////////////////////
 //End of MongoDB Connection///////
 //////////////////////////////////
@@ -299,10 +302,17 @@ PlaceToPayTrn= mongoose.model('PlaceToPayTrn',PlaceToPayTrnSchema);
 
 
 //Development AMAZON BUCKET
-var client = knox.createClient({
+/*var client = knox.createClient({
     key: 'AKIAIERCR4POCARGBWHA'
   , secret: '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'
   , bucket: 'mensajeria'
+});*/
+
+//Production AMAZON BUCKET
+var client = knox.createClient({
+    key: 'AKIAJH4B7FYHA7UXYJTQ'
+  , secret: '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'
+  , bucket: 'vueltap'
 });
 
 //Session
@@ -1297,32 +1307,39 @@ utils.log("Delivery","Recibo:",JSON.stringify(req.body));
 
 	//New Implementacion
 	if (req.body.payment_method === CONSTANTS.PMNT_METHODS.CREDIT){
-		PaymentToken.findOne({_id:req.body.token_id},
-			function(errPmtTkn,pmntToken){
-				if (!errPmtTkn){
-					payments.capturePaymentUsingToken(pmntToken.token,req.body.ip_address,'123456',req.body.price_to_pay,user,
-					function(errorCreatePmnt,resPmt){
-						if (!errorCreatePmnt){
-							new PlaceToPayTrn({user_id : req.body.user_id,p2p_trn_id:resPmt[6], p2p_response:resPmt, date_sent:new Date(), status:resPmt[0]}).save(
-							function(errCreateTrn,trnObject){
-								if (!errCreateTrn){
-									if (trnObject.status==CONSTANTS.P2P.STATUS.PENDING){
-										createDeliveryItemHelper(req,res,trnObject._id);
-									}else{
-										res.json({status: false, message: "Error creando pedido.", response: "Transaccion rechazada en Place to Pay"});
-									}
+		User.findOne({_id:req.body.user_id},
+			function(errFndUsr,user){
+				if (!errFndUsr){
+					PaymentToken.findOne({_id:req.body.token_id},
+					function(errPmtTkn,pmntToken){
+						if (!errPmtTkn){
+							payments.capturePaymentUsingToken(pmntToken.token,req.body.ip_address,'123456',req.body.price_to_pay,user,
+							function(errorCreatePmnt,resPmt){
+								if (!errorCreatePmnt){
+									new PlaceToPayTrn({user_id : req.body.user_id,p2p_trn_id:resPmt[6], p2p_response:resPmt, date_sent:new Date(), status:resPmt[0]}).save(
+									function(errCreateTrn,trnObject){
+										if (!errCreateTrn){
+											if (trnObject.status==CONSTANTS.P2P.STATUS.PENDING){
+												createDeliveryItemHelper(req,res,trnObject._id);
+											}else{
+												res.json({status: false, message: "Error creando pedido.", response: "Transaccion rechazada en Place to Pay"});
+											}
+										}else{
+											res.json({status: false, message: "Error creando pedido.", response: errCreateTrn});
+										}
+									});
 								}else{
-									res.json({status: false, message: "Error creando pedido.", response: errCreateTrn});
+									res.json({status: false, message: "Error creando pedido.", response: errorCreatePmnt});
 								}
 							});
 						}else{
-							res.json({status: false, message: "Error creando pedido.", response: errorCreatePmnt});
+							res.json({status: false, message: "Error creando pedido.", response: errPmtTkn});
 						}
 					});
 				}else{
-					res.json({status: false, message: "Error creando pedido.", response: errPmtTkn});
+					res.json({status: false, message: "Error creando pedido.", response: errFndUsr});
 				}
-			});
+		});
 	}else{
 		createDeliveryItemHelper(req,res,"");
 	}
