@@ -220,7 +220,7 @@ var DeliveryItemSchema= new mongoose.Schema({
 	price_to_pay : {type: Number, required:false},
 	payment_method : {type: String, required:false}, //credit , cash
 	payment_token_id : {type: String, required:false},
-	trn_id : {type: String, required:false}, //stores the transaction id sent by p2p
+	trn_ids :[{type: mongoose.Schema.Types.ObjectId, ref: 'PlaceToPayTrn'}], //stores the transaction id sent by p2p
 	overall_status : {type: String, required:true}, //requested,started, finished
 	status : {type: String, required:true}, //available, accepted, in-transit, delivered, returning, returned, aborted
 	pickup_time : {type: Date, required:false},
@@ -294,7 +294,7 @@ var PaymentTokenSchema= new mongoose.Schema({
 //////////////////////////////////
 //SubDocumentSchema///////////////
 //////////////////////////////////
-var PlaceToPayTrnSchema = new mongoose.Schema({user_id : {type: String, required:true},p2p_trn_id:String, p2p_response:String, date_sent:String, status:String});
+var PlaceToPayTrnSchema = new mongoose.Schema({user_id : {type: String, required:true},p2p_trn_id:String, p2p_response:String, date_sent:String, status:String,ip_address:String,is_capture:Boolean});
 PlaceToPayTrn= mongoose.model('PlaceToPayTrn',PlaceToPayTrnSchema);
 //////////////////////////////////
 //End SubDocumentSchema///////////
@@ -1316,7 +1316,8 @@ utils.log("Delivery","Recibo:",JSON.stringify(req.body));
 							payments.capturePaymentUsingToken(pmntToken.token,req.body.ip_address,'123456',req.body.price_to_pay,user,
 							function(errorCreatePmnt,resPmt){
 								if (!errorCreatePmnt){
-									new PlaceToPayTrn({user_id : req.body.user_id,p2p_trn_id:resPmt[6], p2p_response:resPmt, date_sent:new Date(), status:resPmt[0]}).save(
+									//console.log("RES ",resPmt);
+									new PlaceToPayTrn({user_id : req.body.user_id,p2p_trn_id:resPmt[45], p2p_response:resPmt, date_sent:new Date(), status:resPmt[0],ip_address:req.body.ip_address,is_capture:true}).save(
 									function(errCreateTrn,trnObject){
 										if (!errCreateTrn){
 											if (trnObject.status==CONSTANTS.P2P.STATUS.PENDING){
@@ -1455,7 +1456,7 @@ var createDeliveryItemHelper = function(req,res,trnId){
 		rated : false,
 		images : [],
 		payment_token_id:req.body.token_id,
-		trn_id:trnId,}).save(
+		trn_ids:[trnId],}).save(
 	function(errCrtDlvrItm,dlvrItem){
 		if (!errCrtDlvrItm){
 			User.findOneAndUpdate({_id:dlvrItem.user_id},{$inc:{"stats.created_services":1}}, 
@@ -1863,6 +1864,7 @@ exports.changeStatusInTransit = function(req,res){
 			}
 	});
 };
+
 exports.changeStatusDelivered = function(req,res){
 	utils.log("DeliveryItem/Status/Delivered/"+req.params.delivery_id,"Recibo:",JSON.stringify(req.body));
 	if(req.body.messenger_info){
@@ -1907,6 +1909,7 @@ exports.changeStatusDelivered = function(req,res){
 			}
 	});
 };
+
 exports.changeStatusReturning = function(req,res){
 	utils.log("DeliveryItem/Status/Returning/"+req.params.delivery_id,"Recibo:",JSON.stringify(req.body));
 	if(req.body.messenger_info){
@@ -1943,6 +1946,38 @@ exports.changeStatusReturning = function(req,res){
 			}
 	});
 };
+
+var settlePaymentHelper=function(res,req,dlvrItem,callback){
+	PlaceToPayTrn.findOne({_id:dlvrItem.trn_ids[0]},
+		function (errFndP2PTrn,p2pTrn){
+			if (!errFndP2PTrn){
+				PaymentToken.findOne({_id:dlvrItem.payment_token_id},
+				function(errFndPmntTkn,pmntTkn){
+					if (!errFndPmntTkn){
+						//DEBEMOS ENVIAR TRN A PLACE TO PAY
+						payments.settleTransaction(p2pTrn.p2p_trn_id,p2pTrn.ip_address,pmntTkn.franchise,
+						function(errorPayment, body){
+							var resPmt=body.split(',');
+							new PlaceToPayTrn({user_id : p2pTrn.user_id,p2p_trn_id:resPmt[45], p2p_response:resPmt, date_sent:new Date(), status:resPmt[0],ip_address:p2pTrn.ip_address,is_capture:false}).save(
+							function(errCreateTrn,trnObject){
+								dlvrItem.trn_ids.push(trnObject._id);
+								dlvrItem.save(
+								function(errSve,newDelItem){
+									callback(errorPayment,resPmt);	
+								});
+							});
+						});
+					}else{
+						res.json({status: false, error: "Error Procesando Pago ",errFndPmntTkn});
+					}
+
+				});
+			}else{
+				res.json({status: false, error: "Error Procesando Pago",errFndP2PTrn});
+			}
+		});
+};
+
 exports.changeStatusReturned = function(req,res){
 	utils.log("DeliveryItem/Status/Returning/"+req.params.delivery_id,"Recibo:",JSON.stringify(req.body));
 	if(req.body.messenger_info){
@@ -2099,11 +2134,26 @@ exports.changeStatus = function(req,res){
 					   	Messenger.findOneAndUpdate({_id:req.body.messenger_info._id},
 									{$inc:{"stats.finished_services":1}}, 
 									function(err, user){
-									res.json({
+									if (object.payment_method===CONSTANTS.PMNT_METHODS.CREDIT){
+										settlePaymentHelper(res,req,object,
+										function(errUpdPmnt,resPmnt){
+										//console.log("RESPMNT ",resPmnt);
+										if (!errUpdPmnt && resPmnt[0]===CONSTANTS.P2P.STATUS.APPROVED){
+											res.json({
+											status:true, 
+											message:"DeliveryItem ahora está" + object.status, 
+											response:result});
+										}else{
+											res.json({status: false, error: "Error Updating Payment ",errUpdPmnt});
+										}
+										});
+									}else{
+										res.json({
 										status:true, 
 										message:"DeliveryItem ahora está" + object.status, 
 										response:result
-									});
+										});
+									}
    						});
 					});
 				}
@@ -2120,13 +2170,30 @@ exports.changeStatus = function(req,res){
 						utils.log("DeliveryItem/Delivered","Envío:",JSON.stringify(object));
 						Messenger.findOneAndUpdate({_id:req.body.messenger_info._id},
    									{$inc:{"stats.finished_services":1}}, 
-   									function(err, user){
-	   									res.json({
-										status:true, 
-										message:"DeliveryItem ahora está" + object.status, 
-										response:result
+   							function(err, user){
+   								if (object.payment_method===CONSTANTS.PMNT_METHODS.CREDIT){
+									settlePaymentHelper(res,req,object,
+									function(errUpdPmnt,resPmnt){
+										//console.log("RESPMNT ",resPmnt);
+										if (!errUpdPmnt && resPmnt[0]===CONSTANTS.P2P.STATUS.APPROVED){
+											res.json({
+											status:true, 
+											message:"DeliveryItem ahora está" + object.status, 
+											response:result
+											});
+										}else{
+											res.json({status: false, error: "Error Updating Payment ",errUpdPmnt});
+										}
 									});
-   						});
+								}else{
+									res.json({
+									status:true, 
+									message:"DeliveryItem ahora está" + object.status, 
+									response:result
+									});
+								}
+	   									
+   							});
 					});
 			   	}
 			   	else if(req.params.status = CONSTANTS.STATUS.SYSTEM.ABORTED){
@@ -2327,14 +2394,29 @@ exports.nextStatus = function(req,res){
 						object.save(function(err, result){
 							notifyEvent("user",result,object.status);
 							utils.log("DeliveryItem/Delivered","Envío:",JSON.stringify(object));
-							Messenger.findOneAndUpdate({_id:req.body.messenger_info._id},
-	   									{$inc:{"stats.finished_services":1}}, 
-	   									function(err, user){
-		   									res.json({
+							Messenger.findOneAndUpdate({_id:req.body.messenger_info._id},{$inc:{"stats.finished_services":1}}, 
+	   						function(err, user){
+		   						if (object.payment_method===CONSTANTS.PMNT_METHODS.CREDIT){
+									settlePaymentHelper(res,req,object,
+									function(errUpdPmnt,resPmnt){
+										//console.log("RESPMNT ",resPmnt);
+										if (!errUpdPmnt && resPmnt[0]===CONSTANTS.P2P.STATUS.APPROVED){
+											res.json({
 											status:true, 
 											message:"DeliveryItem ahora está" + object.status, 
 											response:result
+											});
+										}else{
+											res.json({status: false, error: "Error Updating Payment ",errUpdPmnt});
+										}
+									});
+									}else{
+										res.json({
+										status:true, 
+										message:"DeliveryItem ahora está" + object.status, 
+										response:result
 										});
+									}		
 	   						});
 						});
 					}
@@ -3397,7 +3479,7 @@ exports.createPaymentMethod = function(req,res){
 					user_id : req.body.user_id,
 					token : result.tokenizeCardResult.token,
 					card_last4 : req.body.card_number.substr(req.body.card_number.length-4, req.body.card_number.length),
-					franchise : payments.getFranchiseByBIN(req.body.card_number),
+					franchise : result.tokenizeCardResult.franchise,
 					date_created: new Date(),
 					valid_until: result.tokenizeCardResult.validUntil,
 					}).save(function(err3,object){

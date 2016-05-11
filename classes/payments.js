@@ -91,14 +91,18 @@ var createFormDataCaptOnly=function(token,customerIP,invoiceNum,amount,customer)
             'x_additional_data[Hora de Salida]': '0' */}   
 };
 
-var generateToken = function(){
-    var text = "";
-    var possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-
-    for( var i=0; i < 15; i++ )
-        text += possible.charAt(Math.floor(Math.random() * possible.length));
-
-    return text;
+var createFormDataSettle=function(trnId,customerIP,franchise){
+    return {x_version: '2.0',
+            x_delim_data: 'TRUE',
+            x_relay_response: 'FALSE',
+            x_login: CONSTANTS.P2P_PARAMS.LOGIN,
+            x_tran_key: CONSTANTS.P2P_PARAMS.TRAN_KEY,
+            x_test_request: CONSTANTS.P2P_PARAMS.IS_DEV,
+            x_type: CONSTANTS.P2P_PARAMS.TRN_TYPES.SETTLE,
+            x_customer_ip: customerIP,
+            x_franchise: franchise,
+            x_parent_session: trnId,
+        };   
 };
 
 /*
@@ -161,22 +165,39 @@ exports.deleteToken = function(token,callback){
 /*
     Function that settle a previously CAPTURE trn using the capturePaymentUsingToken
 */
-exports.settleTransaction = function(trnId){
-    if (client){
+exports.settleTransaction = function(trnId,customerIP,franchise,callback){
+    /*if (client){
                   
         var args = {auth:createAuthObject(),transactionID:trnId}                
 
         client.settleCardTransaction(args, function(err, result, raw, soapHeader) {
             console.log(" LR ",client.lastRequest );
-            //console.log(" RSLT ",result);
+            console.log(" RSLT ",result);
             //callback(err, result, raw, soapHeader);
             //console.log("ERR ",err);
             //console.log("result ",result);
             //console.log("RAW",raw);
+            callback(err, result, raw, soapHeader);
       });
     }else{
          callback("SOAP client not initialized");
-    }
+    }*/
+    var formData=createFormDataSettle(trnId,customerIP,franchise);
+    //console.log("Data to send ",formData);    
+    var options = { method: 'POST',
+        url: CONSTANTS.P2P_PARAMS.P2P_URL_FORM,
+        headers: 
+        {   //'postman-token': '15592359-7706-eb9c-ef2f-57f78eba273c',
+            'cache-control': 'no-cache',
+            'content-type': 'multipart/form-data; boundary=---011000010111000001101001' },
+            formData: formData};
+
+    request(options, function (error, response, body) {
+        //console.log("ERROR ",error);
+        console.log("BODY ",body.split(','));
+        callback(error,body);
+    });
+
 };
 
 
@@ -196,6 +217,7 @@ exports.capturePaymentUsingToken=function(token,customerIP,invoiceNum,amount,cus
             formData: formData};
 
     request(options, function (error, response, body) {
+        console.log("BODY ",body.split(','));
         callback(error,body.split(','));
     });
 };
