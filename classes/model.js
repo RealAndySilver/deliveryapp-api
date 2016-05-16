@@ -2144,7 +2144,7 @@ exports.changeStatus = function(req,res){
 											message:"DeliveryItem ahora está" + object.status, 
 											response:result});
 										}else{
-											res.json({status: false, error: "Error Updating Payment ",errUpdPmnt});
+											res.json({status: false, error: "Error Updating Payment "+errUpdPmnt});
 										}
 										});
 									}else{
@@ -2182,7 +2182,7 @@ exports.changeStatus = function(req,res){
 											response:result
 											});
 										}else{
-											res.json({status: false, error: "Error Updating Payment ",errUpdPmnt});
+											res.json({status: false, error: "Error Updating Payment "+errUpdPmnt});
 										}
 									});
 								}else{
