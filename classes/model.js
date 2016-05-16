@@ -1968,12 +1968,12 @@ var settlePaymentHelper=function(res,req,dlvrItem,callback){
 							});
 						});
 					}else{
-						res.json({status: false, error: "Error Procesando Pago ",errFndPmntTkn});
+						res.json({status: false, error: "Error Procesando Pago "+errFndPmntTkn});
 					}
 
 				});
 			}else{
-				res.json({status: false, error: "Error Procesando Pago",errFndP2PTrn});
+				res.json({status: false, error: "Error Procesando Pago"+errFndP2PTrn});
 			}
 		});
 };
