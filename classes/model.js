@@ -3218,7 +3218,7 @@ exports.getPrice = function (req,res){
 			insurancePrice = 30000;
 		}
 */
-		insurancePrice = insurancePrice*0.05;
+		insurancePrice = insurancePrice*0.02;
 	}
 	
 	distance.get(
