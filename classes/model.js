@@ -2407,7 +2407,7 @@ exports.nextStatus = function(req,res){
 											response:result
 											});
 										}else{
-											res.json({status: false, error: "Error Updating Payment ",errUpdPmnt});
+											res.json({status: false, error: "Error Updating Payment "+errUpdPmnt});
 										}
 									});
 									}else{
