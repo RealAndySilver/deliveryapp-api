@@ -36,10 +36,20 @@ mongoose.connect("mongodb://vueltap:vueltap123@ds015909.mlab.com:15909/vueltap")
 //////////////////////////////////
 //Global Vars/////////////////////
 //////////////////////////////////
+
+//Producción
+//var hostname = "192.241.187.135:2000";
+var webapp = "192.185.136.242"
+var webRootFolder = "/~julian/vueltap/"
+//Dev
+var hostname = "192.241.187.135:2000";
+//var webapp = "192.241.187.135:3000";
+
 var exclude = {/*password:*/};
 var verifyEmailVar = true;
 var CONSTANTS = {
-	DISCLAIMER_PATH:'http://192.185.136.242/~julian/shared/TermsVUELTAP_V5.pdf',
+	DISCLAIMER_USER_PATH:'http://'+webapp+webRootFolder+'TermsUsuario.pdf',
+	DISCLAIMER_MESSENGER_PATH:'http://'+webapp+webRootFolder+'TermsMensajero.pdf',
 	P2P: {STATUS:{ERROR:'0',APPROVED:'1',REJECTED:'2',PENDING:'3'}},
 	STATUS : {
 		SYSTEM : {
@@ -94,13 +104,7 @@ var CONSTANTS = {
 	}
 };
 var limitForSort = 20;
-//Producción
-//var hostname = "192.241.187.135:2000";
-var webapp = "192.185.136.242"
-var webRootFolder = "/~julian/vueltap/"
-//Dev
-var hostname = "192.241.187.135:2000";
-//var webapp = "192.241.187.135:3000";
+
 
 //////////////////////////////////
 //End of Global Vars//////////////
@@ -3354,8 +3358,14 @@ exports.getInsuranceIntervals = function(req,res){
 Returns the PDF to be displayed over the agreement screen
 */
 exports.getDisclarimerPDF = function (req,res){
-	res.writeHead(301,{Location: CONSTANTS.DISCLAIMER_PATH});
-	res.end();
+	if (req.params.disclaimer_type=='user'){
+		res.writeHead(301,{Location: CONSTANTS.DISCLAIMER_USER_PATH});
+		res.end();
+	}else{
+		res.writeHead(301,{Location: CONSTANTS.DISCLAIMER_MESSENGER_PATH});
+		res.end();
+	}
+	
 };
 
 
@@ -3484,7 +3494,7 @@ exports.createPaymentMethod = function(req,res){
 					valid_until: result.tokenizeCardResult.validUntil,
 					}).save(function(err3,object){
 						if(err3){
-							res.json({status: false, message: "Error al registrar el metodo de pago", err: err3});
+							res.json({status: false, message: "Error al registrar el metodo de pago "+err3 , err: err3});
 						}
 						else{
 							utils.log("Payment Token Created","Envío:",JSON.stringify(object));
@@ -3494,7 +3504,7 @@ exports.createPaymentMethod = function(req,res){
 						}
 					});
 				}else{
-				res.json({status: false, message: "Error al registrar el metodo de pago", err: err2});
+				res.json({status: false, message: "Error al registrar el metodo de pago "+err2, err: err2});
 			}
 		});
 			
