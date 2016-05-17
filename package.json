@@ -3,7 +3,8 @@
   "version": "0.0.1",
   "private": true,
   "scripts": {
-    "start": "nodemon mensajeria.js"
+    "start": "nodemon mensajeria.js",
+    "forever": "forever start --spinSleepTime 10000 mensajeria.js"
   },
   "dependencies": {
     "apn": "1.4.1",

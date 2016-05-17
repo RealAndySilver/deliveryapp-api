@@ -3,12 +3,21 @@ var express = require('express')
   , user = require('./routes/user')
   , admin = require('./routes/admin')
   , http = require('http')
+  , https = require('https')
   , path = require('path')
   , model = require('./classes/model')
   , mail = require('./classes/mail_sender')
   , authentication = require('./classes/authentication')
   ,	security = require('./classes/security');
 var app = express();
+
+var testing = false;
+var fs = require('fs');
+var privateKey  = fs.readFileSync('/etc/letsencrypt/live/vueltap.com/privkey.pem', 'utf8');
+var certificate = fs.readFileSync('/etc/letsencrypt/live/vueltap.com/fullchain.pem', 'utf8');
+var ca = fs.readFileSync('/etc/letsencrypt/live/vueltap.com/chain.pem', 'utf8');
+var credentials = {key: privateKey, cert: certificate, ca:ca};
+
 // all environments
 
 var allowCrossDomain = function(req, res, next) {
@@ -21,9 +30,10 @@ var allowCrossDomain = function(req, res, next) {
     else{
 	  next();  
     }
-}
+};
 
 app.set('port', process.env.PORT || 8080);
+app.set('s-port', process.env.PORT || 8080);
 app.set('views', __dirname + '/views');
 app.set('view engine', 'jade');
 app.set('view options', { pretty: false });
@@ -217,6 +227,13 @@ app.get('/api_1.0/DeleteAdmin/:admin_id/:super_admin_id', model.deleteAdmin);
 
 //Mobile APIs
 
-http.createServer(app).listen(app.get('port'), function(){
-  console.log('Express server listening on port ' + app.get('port'));
-});
+if(testing){
+    http.createServer(app).listen(app.get('port'), function(){
+	console.log('Http Express server listening on port ' + app.get('port'));
+    });
+}
+else{
+    https.createServer(credentials, app).listen(app.get('s-port'), function(){
+	console.log('Https Express server listening on port ' + app.get('s-port'));
+    });
+}
