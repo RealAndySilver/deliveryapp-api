@@ -36,10 +36,20 @@ mongoose.connect("mongodb://vueltap:vueltap123@ds015909.mlab.com:15909/vueltap")
 //////////////////////////////////
 //Global Vars/////////////////////
 //////////////////////////////////
+
+//Producción
+//var hostname = "192.241.187.135:2000";
+var webapp = "192.185.136.242"
+var webRootFolder = "/~julian/vueltap/"
+//Dev
+var hostname = "192.241.187.135:2000";
+//var webapp = "192.241.187.135:3000";
+
 var exclude = {/*password:*/};
 var verifyEmailVar = true;
 var CONSTANTS = {
-	DISCLAIMER_PATH:'http://192.185.136.242/~julian/shared/TermsVUELTAP_V5.pdf',
+	DISCLAIMER_USER_PATH:'http://'+webapp+webRootFolder+'TermsUsuario.pdf',
+	DISCLAIMER_MESSENGER_PATH:'http://'+webapp+webRootFolder+'TermsMensajero.pdf',
 	P2P: {STATUS:{ERROR:'0',APPROVED:'1',REJECTED:'2',PENDING:'3'}},
 	STATUS : {
 		SYSTEM : {
@@ -94,13 +104,7 @@ var CONSTANTS = {
 	}
 };
 var limitForSort = 20;
-//Producción
-//var hostname = "192.241.187.135:2000";
-var webapp = "192.185.136.242"
-var webRootFolder = "/~julian/vueltap/"
-//Dev
-var hostname = "192.241.187.135:2000";
-//var webapp = "192.241.187.135:3000";
+
 
 //////////////////////////////////
 //End of Global Vars//////////////
@@ -949,7 +953,7 @@ utils.log("Messenger","Recibo:",JSON.stringify(req.body));
 		else{
 			//Una vez creado el documento en la base de datos procedemos a enviar un email
 			//de confirmación
-			mail.send("Bienvenido a Vueltap", "Ingrese sus documentos en la url http://"+webapp+webRootFolder+"/messenger/"+object.messenger_id+"/uploadFiles",req.body.email);
+			mail.send("Bienvenido a Vueltap", "Ingrese sus documentos en la url http://"+webapp+webRootFolder+"messenger/"+object._id+"/uploadFiles",req.body.email);
 			//emailVerification(req,object,'messenger');
 			utils.log("Messenger","Envío:",JSON.stringify(object));
 			res.json({status: true, message: "Mensajero creado exitosamente. Proceder a activar la cuenta.", response: object});
@@ -1968,12 +1972,12 @@ var settlePaymentHelper=function(res,req,dlvrItem,callback){
 							});
 						});
 					}else{
-						res.json({status: false, error: "Error Procesando Pago ",errFndPmntTkn});
+						res.json({status: false, error: "Error Procesando Pago "+errFndPmntTkn});
 					}
 
 				});
 			}else{
-				res.json({status: false, error: "Error Procesando Pago",errFndP2PTrn});
+				res.json({status: false, error: "Error Procesando Pago"+errFndP2PTrn});
 			}
 		});
 };
@@ -2144,7 +2148,7 @@ exports.changeStatus = function(req,res){
 											message:"DeliveryItem ahora está" + object.status, 
 											response:result});
 										}else{
-											res.json({status: false, error: "Error Updating Payment ",errUpdPmnt});
+											res.json({status: false, error: "Error Updating Payment "+errUpdPmnt});
 										}
 										});
 									}else{
@@ -2182,7 +2186,7 @@ exports.changeStatus = function(req,res){
 											response:result
 											});
 										}else{
-											res.json({status: false, error: "Error Updating Payment ",errUpdPmnt});
+											res.json({status: false, error: "Error Updating Payment "+errUpdPmnt});
 										}
 									});
 								}else{
@@ -2407,7 +2411,7 @@ exports.nextStatus = function(req,res){
 											response:result
 											});
 										}else{
-											res.json({status: false, error: "Error Updating Payment ",errUpdPmnt});
+											res.json({status: false, error: "Error Updating Payment "+errUpdPmnt});
 										}
 									});
 									}else{
@@ -3204,7 +3208,7 @@ exports.getPrice = function (req,res){
 	var parsedOrigin = "";
 	var parsedDestination = "";
 	var insurancePrice = 0;
-	var minPrice = 5000;
+	var minPrice = 3000;
 	if(req.params.insurancevalue){
 		insurancePrice = req.params.insurancevalue;
 /*
@@ -3218,7 +3222,7 @@ exports.getPrice = function (req,res){
 			insurancePrice = 30000;
 		}
 */
-		insurancePrice = insurancePrice*0.05;
+		insurancePrice = insurancePrice*0.02;
 	}
 	
 	distance.get(
@@ -3354,8 +3358,14 @@ exports.getInsuranceIntervals = function(req,res){
 Returns the PDF to be displayed over the agreement screen
 */
 exports.getDisclarimerPDF = function (req,res){
-	res.writeHead(301,{Location: CONSTANTS.DISCLAIMER_PATH});
-	res.end();
+	if (req.params.disclaimer_type=='user'){
+		res.writeHead(301,{Location: CONSTANTS.DISCLAIMER_USER_PATH});
+		res.end();
+	}else{
+		res.writeHead(301,{Location: CONSTANTS.DISCLAIMER_MESSENGER_PATH});
+		res.end();
+	}
+	
 };
 
 
@@ -3484,7 +3494,7 @@ exports.createPaymentMethod = function(req,res){
 					valid_until: result.tokenizeCardResult.validUntil,
 					}).save(function(err3,object){
 						if(err3){
-							res.json({status: false, message: "Error al registrar el metodo de pago", err: err3});
+							res.json({status: false, message: "Error al registrar el metodo de pago "+err3 , err: err3});
 						}
 						else{
 							utils.log("Payment Token Created","Envío:",JSON.stringify(object));
@@ -3494,7 +3504,7 @@ exports.createPaymentMethod = function(req,res){
 						}
 					});
 				}else{
-				res.json({status: false, message: "Error al registrar el metodo de pago", err: err2});
+				res.json({status: false, message: "Error al registrar el metodo de pago "+err2, err: err2});
 			}
 		});
 			

@@ -57,7 +57,7 @@ app.get('/*', function(req, res, next){
 app.get('/api_1.0/CloseToMe/:lat/:lon', model.closeToMe);
 app.get('/api_1.0/GetInsuranceIntervals', model.getInsuranceIntervals);
 app.get('/api_1.0/GetPrice/:loc1/:loc2/:insurancevalue?', model.getPrice);
-app.get('/api_1.0/GetDisclaimerPDF', model.getDisclarimerPDF);
+app.get('/api_1.0/GetDisclaimerPDF/:disclaimer_type', model.getDisclarimerPDF);
 
 //Middleware to encode password
 app.post('/api_1.0/User/Create', security.passwordEncrypt);
