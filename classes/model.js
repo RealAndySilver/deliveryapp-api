@@ -3208,7 +3208,7 @@ exports.getPrice = function (req,res){
 	var parsedOrigin = "";
 	var parsedDestination = "";
 	var insurancePrice = 0;
-	var minPrice = 5000;
+	var minPrice = 3000;
 	if(req.params.insurancevalue){
 		insurancePrice = req.params.insurancevalue;
 /*
