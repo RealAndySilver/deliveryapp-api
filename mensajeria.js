@@ -11,12 +11,14 @@ var express = require('express')
   ,	security = require('./classes/security');
 var app = express();
 
-var testing = false;
+var testing = true;
 var fs = require('fs');
-var privateKey  = fs.readFileSync('/etc/letsencrypt/live/vueltap.com/privkey.pem', 'utf8');
-var certificate = fs.readFileSync('/etc/letsencrypt/live/vueltap.com/fullchain.pem', 'utf8');
-var ca = fs.readFileSync('/etc/letsencrypt/live/vueltap.com/chain.pem', 'utf8');
-var credentials = {key: privateKey, cert: certificate, ca:ca};
+if (!testing){
+  var privateKey  = fs.readFileSync('/etc/letsencrypt/live/vueltap.com/privkey.pem', 'utf8');
+  var certificate = fs.readFileSync('/etc/letsencrypt/live/vueltap.com/fullchain.pem', 'utf8');
+  var ca = fs.readFileSync('/etc/letsencrypt/live/vueltap.com/chain.pem', 'utf8');
+  var credentials = {key: privateKey, cert: certificate, ca:ca};
+}
 
 // all environments
 
