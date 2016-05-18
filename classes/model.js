@@ -48,8 +48,8 @@ var hostname = "192.241.187.135:2000";
 var exclude = {/*password:*/};
 var verifyEmailVar = true;
 var CONSTANTS = {
-	DISCLAIMER_USER_PATH:'http://'+webapp+webRootFolder+'TermsUsuario.pdf',
-	DISCLAIMER_MESSENGER_PATH:'http://'+webapp+webRootFolder+'TermsMensajero.pdf',
+	DISCLAIMER_USER_PATH:'http://'+webapp+webRootFolder+'assets/pdf/TermsUsuario.pdf',
+	DISCLAIMER_MESSENGER_PATH:'http://'+webapp+webRootFolder+'assets/pdf/TermsMensajero.pdf',
 	P2P: {STATUS:{ERROR:'0',APPROVED:'1',REJECTED:'2',PENDING:'3'}},
 	STATUS : {
 		SYSTEM : {
