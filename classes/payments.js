@@ -55,6 +55,9 @@ var createAuthObject=function(){
                         additional:[]};
 }
 
+/*
+* Prepares the object to be send to the capture
+* */
 var createFormDataCaptOnly=function(token,customerIP,invoiceNum,amount,customer){
 
     return {x_version: '2.0',
@@ -91,24 +94,44 @@ var createFormDataCaptOnly=function(token,customerIP,invoiceNum,amount,customer)
             'x_additional_data[Hora de Salida]': '0' */}   
 };
 
+/*
+ * Prepares the object to be send to the settle transaction
+ *
+ * */
 var createFormDataSettle=function(trnId,customerIP,franchise){
     return {x_version: '2.0',
-            x_delim_data: 'TRUE',
-            x_relay_response: 'FALSE',
-            x_login: CONSTANTS.P2P_PARAMS.LOGIN,
-            x_tran_key: CONSTANTS.P2P_PARAMS.TRAN_KEY,
-            x_test_request: CONSTANTS.P2P_PARAMS.IS_DEV,
-            x_type: CONSTANTS.P2P_PARAMS.TRN_TYPES.SETTLE,
-            x_customer_ip: customerIP,
-            x_franchise: franchise,
-            x_parent_session: trnId,
-        };   
+        x_delim_data: 'TRUE',
+        x_relay_response: 'FALSE',
+        x_login: CONSTANTS.P2P_PARAMS.LOGIN,
+        x_tran_key: CONSTANTS.P2P_PARAMS.TRAN_KEY,
+        x_test_request: CONSTANTS.P2P_PARAMS.IS_DEV,
+        x_type: CONSTANTS.P2P_PARAMS.TRN_TYPES.SETTLE,
+        x_customer_ip: customerIP,
+        x_franchise: franchise,
+        x_parent_session: trnId,
+    };
 };
 
 /*
+ * Prepares the object to be send to the void transaction
+ *
+ * */
+var createFormDataVoid=function(trnId,customerIP,franchise){
+    return {x_version: '2.0',
+        x_delim_data: 'TRUE',
+        x_relay_response: 'FALSE',
+        x_login: CONSTANTS.P2P_PARAMS.LOGIN,
+        x_tran_key: CONSTANTS.P2P_PARAMS.TRAN_KEY,
+        x_test_request: CONSTANTS.P2P_PARAMS.IS_DEV,
+        x_type: CONSTANTS.P2P_PARAMS.TRN_TYPES.VOID,
+        x_customer_ip: customerIP,
+        x_franchise: franchise,
+        x_parent_session: trnId,
+    };
+};
 
+/*
 Function that connects with Place 2 Pay in order to obtain a new token
-
 */
 exports.createToken = function(user,card_number,cvv,exp_date,callback){
     if (client){
@@ -166,22 +189,6 @@ exports.deleteToken = function(token,callback){
     Function that settle a previously CAPTURE trn using the capturePaymentUsingToken
 */
 exports.settleTransaction = function(trnId,customerIP,franchise,callback){
-    /*if (client){
-                  
-        var args = {auth:createAuthObject(),transactionID:trnId}                
-
-        client.settleCardTransaction(args, function(err, result, raw, soapHeader) {
-            console.log(" LR ",client.lastRequest );
-            console.log(" RSLT ",result);
-            //callback(err, result, raw, soapHeader);
-            //console.log("ERR ",err);
-            //console.log("result ",result);
-            //console.log("RAW",raw);
-            callback(err, result, raw, soapHeader);
-      });
-    }else{
-         callback("SOAP client not initialized");
-    }*/
     var formData=createFormDataSettle(trnId,customerIP,franchise);
     //console.log("Data to send ",formData);    
     var options = { method: 'POST',
@@ -197,7 +204,27 @@ exports.settleTransaction = function(trnId,customerIP,franchise,callback){
         console.log("BODY ",body.split(','));
         callback(error,body);
     });
+};
 
+/*
+    Function that voids a previously CAPTURE trn using the capturePaymentUsingToken
+*/
+exports.voidTransaction = function(trnId,customerIP,franchise,callback){
+    var formData=createFormDataVoid(trnId,customerIP,franchise);
+    //console.log("Data to send ",formData);    
+    var options = { method: 'POST',
+        url: CONSTANTS.P2P_PARAMS.P2P_URL_FORM,
+        headers: 
+        {   //'postman-token': '15592359-7706-eb9c-ef2f-57f78eba273c',
+            'cache-control': 'no-cache',
+            'content-type': 'multipart/form-data; boundary=---011000010111000001101001' },
+            formData: formData};
+
+    request(options, function (error, response, body) {
+        //console.log("ERROR ",error);
+        console.log("BODY ",body.split(','));
+        callback(error,body);
+    });
 };
 
 

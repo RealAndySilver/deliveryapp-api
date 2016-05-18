@@ -953,7 +953,7 @@ utils.log("Messenger","Recibo:",JSON.stringify(req.body));
 		else{
 			//Una vez creado el documento en la base de datos procedemos a enviar un email
 			//de confirmación
-			mail.send("Bienvenido a Vueltap", "Ingrese sus documentos en la url http://"+webapp+webRootFolder+"messenger/"+object._id+"/uploadFiles",req.body.email);
+			mail.send("Bienvenido a Vueltap", "Ingrese sus documentos en la url http://"+webapp+webRootFolder+"uploadFilesMessenger/"+object._id,req.body.email);
 			//emailVerification(req,object,'messenger');
 			utils.log("Messenger","Envío:",JSON.stringify(object));
 			res.json({status: true, message: "Mensajero creado exitosamente. Proceder a activar la cuenta.", response: object});
