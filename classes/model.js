@@ -38,12 +38,13 @@ mongoose.connect("mongodb://vueltap:vueltap123@ds015909.mlab.com:15909/vueltap")
 //////////////////////////////////
 
 //Producción
-//var hostname = "192.241.187.135:2000";
-var webapp = "192.185.136.242"
-var webRootFolder = "/~julian/vueltap/"
+//var hostname = "vueltap.com:8080";
+//var webapp = "vueltap.com"
+//var webRootFolder = "/"
 //Dev
 var hostname = "192.241.187.135:2000";
-//var webapp = "192.241.187.135:3000";
+var webapp = "192.185.136.242"
+var webRootFolder = "/~julian/vueltap/"
 
 var exclude = {/*password:*/};
 var verifyEmailVar = true;
