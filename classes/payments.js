@@ -251,25 +251,24 @@ exports.capturePaymentUsingToken=function(token,customerIP,invoiceNum,amount,cus
 
 exports.getFranchiseByBIN = function (number){
     var franchise="NA";
-
     //VISA
     var re = new RegExp("^4");
     if (number.match(re) != null)
-        franchise= "VI";
+        franchise= "VISA";
 
     // Mastercard
     re = new RegExp("^5[1-5]");
     if (number.match(re) != null)
-        franchise= "MC";
+        franchise= "MASTERCARD";
 
     // AMEX
     re = new RegExp("^3[47]");
     if (number.match(re) != null)
-        franchise= "AM";
+        franchise= "AMEX";
 
     re = new RegExp("^36");
     if (number.match(re) != null)
-        franchise= "DI";
+        franchise= "DINERS";
 
     // Visa Electron
     re = new RegExp("^(4026|417500|4508|4844|491(3|7))");
@@ -279,7 +278,7 @@ exports.getFranchiseByBIN = function (number){
     // Discover
     /*re = new RegExp("^(6011|622(12[6-9]|1[3-9][0-9]|[2-8][0-9]{2}|9[0-1][0-9]|92[0-5]|64[4-9])|65)");
     if (number.match(re) != null)
-        franchise= "Discover";*/
+        franchise= "DISCOVER";*/
 
     // Diners
         // Diners - Carte Blanche

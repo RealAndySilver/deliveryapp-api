@@ -3550,7 +3550,8 @@ exports.createPaymentMethod = function(req,res){
 			res.json({status: false, error: "User not found"});
 		}
 		else{
-			payments.createToken(object,req.body.card_number,req.body.cvv,req.body.exp_date,function(err2, result, raw, soapHeader){
+			payments.createToken(object,req.body.card_number,req.body.cvv,req.body.exp_date,
+				function(err2, result, raw, soapHeader){
 				if (!err2){
 					new PaymentToken({
 					user_id : req.body.user_id,
@@ -3571,9 +3572,9 @@ exports.createPaymentMethod = function(req,res){
 						}
 					});
 				}else{
-				res.json({status: false, message: "Error al registrar el metodo de pago "+err2, err: err2});
-			}
-		});
+					res.json({status: false, message:err2.toString(), err: err2});
+				}
+			});
 			
 		}
 	});
