@@ -224,7 +224,7 @@ var DeliveryItemSchema= new mongoose.Schema({
 	price_to_pay : {type: Number, required:false},
 	payment_method : {type: String, required:false}, //credit , cash
 	payment_token_id : {type: String, required:false},
-	trn_ids :[{type: mongoose.Schema.Types.ObjectId, ref: 'PlaceToPayTrn'}], //stores the transaction id sent by p2p
+	trn_ids :[{type: mongoose.Schema.Types.ObjectId, ref: 'PlaceToPayTrn',required:false}], //stores the transaction id sent by p2p
 	overall_status : {type: String, required:true}, //requested,started, finished
 	status : {type: String, required:true}, //available, accepted, in-transit, delivered, returning, returned, aborted
 	pickup_time : {type: Date, required:false},
