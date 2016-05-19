@@ -1346,7 +1346,7 @@ utils.log("Delivery","Recibo:",JSON.stringify(req.body));
 				}
 		});
 	}else{
-		createDeliveryItemHelper(req,res,"");
+		createDeliveryItemHelper(req,res,null);
 	}
 
 	//END
@@ -1431,7 +1431,7 @@ var createDeliveryItemHelper = function(req,res,trnId){
 	//Creamos de manera correcta los objetos GEO para guardarlos en la base de datos
 	var pickup_location = utils.convertInGeoObject(req.body.pickup_object);
 	var delivery_location = utils.convertInGeoObject(req.body.delivery_object);
-	new DeliveryItem({
+	var tempDlvItem=new DeliveryItem({
 		user_id : req.body.user_id,
 		user_info: req.body.user_info,
 		item_name: req.body.item_name,
@@ -1459,8 +1459,13 @@ var createDeliveryItemHelper = function(req,res,trnId){
 		time_to_deliver: req.body.time_to_deliver,
 		rated : false,
 		images : [],
-		payment_token_id:req.body.token_id,
-		trn_ids:[trnId],}).save(
+		trn_ids : [],
+		payment_token_id:null});
+	if (req.body.payment_method === CONSTANTS.PMNT_METHODS.CREDIT){
+		tempDlvItem.trn_ids=[trnId];
+		tempDlvItem.payment_token_id=req.body.token_id;
+	}
+	tempDlvItem.save(
 	function(errCrtDlvrItm,dlvrItem){
 		if (!errCrtDlvrItm){
 			User.findOneAndUpdate({_id:dlvrItem.user_id},{$inc:{"stats.created_services":1}}, 
@@ -1472,7 +1477,7 @@ var createDeliveryItemHelper = function(req,res,trnId){
 				}
 			});
 		}else{
-			res.json({status: false, message: "Error creando pedido.", response: errCrtDlvrItm});
+			res.json({status: false, message: "Error creando pedido Item.", response: errCrtDlvrItm});
 		}
 	});
 };
