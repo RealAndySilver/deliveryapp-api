@@ -1951,6 +1951,11 @@ exports.changeStatusReturning = function(req,res){
 	});
 };
 
+/*
+*
+*
+*
+* */
 var settlePaymentHelper=function(res,req,dlvrItem,callback){
 	PlaceToPayTrn.findOne({_id:dlvrItem.trn_ids[0]},
 		function (errFndP2PTrn,p2pTrn){
@@ -1981,6 +1986,7 @@ var settlePaymentHelper=function(res,req,dlvrItem,callback){
 			}
 		});
 };
+
 
 exports.changeStatusReturned = function(req,res){
 	utils.log("DeliveryItem/Status/Returning/"+req.params.delivery_id,"Recibo:",JSON.stringify(req.body));
@@ -2653,6 +2659,62 @@ exports.restartDeliveryItem = function(req,res){
 		   	}
 	});	
 };
+
+
+/*
+ *
+ *
+ * */
+var voidPaymentHelper=function(res,req,dlvrItem,msg){
+	if (object.payment_method===CONSTANTS.PMNT_METHODS.CREDIT){
+		PlaceToPayTrn.findOne({_id:dlvrItem.trn_ids[0]},
+			function (errFndP2PTrn,p2pTrn){
+				if (!errFndP2PTrn){
+					PaymentToken.findOne({_id:dlvrItem.payment_token_id},
+						function(errFndPmntTkn,pmntTkn){
+							if (!errFndPmntTkn){
+								//DEBEMOS ENVIAR TRN A PLACE TO PAY
+								payments.voidTransaction(p2pTrn.p2p_trn_id,p2pTrn.ip_address,pmntTkn.franchise,
+									function(errorPayment, body){
+										var resPmt=body.split(',');
+										new PlaceToPayTrn({user_id : p2pTrn.user_id,p2p_trn_id:resPmt[45], p2p_response:resPmt, date_sent:new Date(), status:resPmt[0],ip_address:p2pTrn.ip_address,is_capture:false}).save(
+											function(errCreateTrn,trnObject){
+												/*dlvrItem.trn_ids.push(trnObject._id);
+												dlvrItem.save(
+													function(errSve,newDelItem){
+														callback(errorPayment,resPmt);
+													});*/
+												if (!errCreateTrn){
+													if (!errorPayment && resPmt[0]===CONSTANTS.P2P.STATUS.APPROVED){
+														res.json({
+															status:true,
+															message:msg});
+													}else{
+														res.json({status: false, error: "Error Updating Payment "+errorPayment});
+													}
+
+												}else{
+													res.json({status: false, error: "Error Eliminando Pago "+errFndPmntTkn});
+												}
+											});
+									});
+							}else{
+								res.json({status: false, error: "Error Eliminando Pago "+errFndPmntTkn});
+							}
+
+						});
+				}else{
+					res.json({status: false, error: "Error Eliminando Pago"+errFndP2PTrn});
+				}
+			});
+	}else{
+		res.json({
+			status:true,
+			message:msg
+		});
+	}
+};
+
 //Delete
 exports.deleteDeliveryItem = function(req,res){
 	utils.log("DeliveryItem/Delete/"+req.params.delivery_id,"Recibo:",JSON.stringify(req.body));
@@ -2668,7 +2730,7 @@ exports.deleteDeliveryItem = function(req,res){
 						res.json({status: false, error: "No se pudo borrar ya que no se encontró el item"});
 					}
 					else{
-						res.json({status:true, message:"DeliveryItem en estado available borrado exitosamente."});
+						voidPaymentHelper(res,req,object,"DeliveryItem en estado available borrado exitosamente.");
 					}
 				});
 			}
@@ -2680,7 +2742,7 @@ exports.deleteDeliveryItem = function(req,res){
 					}
 					else{
 						//En este punto se le debe alertar al motorizado que el servicio fue cancelado
-						res.json({status:true, message:"DeliveryItem en estado accepted borrado exitosamente."});
+						voidPaymentHelper(res,req,object,"DeliveryItem en estado accepted borrado exitosamente.");
 					}
 				});
 			}
@@ -2692,7 +2754,7 @@ exports.deleteDeliveryItem = function(req,res){
 					}
 					else{
 						//En este punto se le debe alertar al motorizado que el servicio fue cancelado
-						res.json({status:true, message:"DeliveryItem en estado accepted borrado exitosamente."});
+						voidPaymentHelper(res,req,object,"DeliveryItem en estado accepted borrado exitosamente.");
 					}
 				});
 			}
