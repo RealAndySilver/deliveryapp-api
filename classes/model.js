@@ -39,18 +39,18 @@ mongoose.connect("mongodb://vueltap:vueltap123@ds015909.mlab.com:15909/vueltap")
 
 //Producción
 //var hostname = "vueltap.com:8080";
-//var webapp = "vueltap.com"
+//var webapp = "https://vueltap.com"
 //var webRootFolder = "/"
 //Dev
 var hostname = "192.241.187.135:2000";
-var webapp = "192.185.136.242"
+var webapp = "http://192.185.136.242"
 var webRootFolder = "/~julian/vueltap/"
 
 var exclude = {/*password:*/};
 var verifyEmailVar = true;
 var CONSTANTS = {
-	DISCLAIMER_USER_PATH:'http://'+webapp+webRootFolder+'assets/pdf/TermsUsuario.pdf',
-	DISCLAIMER_MESSENGER_PATH:'http://'+webapp+webRootFolder+'assets/pdf/TermsMensajero.pdf',
+	DISCLAIMER_USER_PATH:webapp+webRootFolder+'assets/pdf/TermsUsuario.pdf',
+	DISCLAIMER_MESSENGER_PATH:webapp+webRootFolder+'assets/pdf/TermsMensajero.pdf',
 	P2P: {STATUS:{ERROR:'0',APPROVED:'1',REJECTED:'2',PENDING:'3'}},
 	STATUS : {
 		SYSTEM : {
@@ -954,7 +954,7 @@ utils.log("Messenger","Recibo:",JSON.stringify(req.body));
 		else{
 			//Una vez creado el documento en la base de datos procedemos a enviar un email
 			//de confirmación
-			mail.send("Bienvenido a Vueltap", "Ingrese sus documentos en la url http://"+webapp+webRootFolder+"#/uploadFilesMessenger/"+object._id,req.body.email);
+			mail.send("Bienvenido a Vueltap", "Ingrese sus documentos en la url "+webapp+webRootFolder+"#/uploadFilesMessenger/"+object._id,req.body.email);
 			//emailVerification(req,object,'messenger');
 			utils.log("Messenger","Envío:",JSON.stringify(object));
 			res.json({status: true, message: "Mensajero creado exitosamente. Proceder a activar la cuenta.", response: object});
@@ -2863,7 +2863,7 @@ exports.verifyAccount= function(req,res){
 				}
 				else{
 					if(result){
-						var url = 'http://'+webapp;
+						var url = webapp;
 						if(!checkIfConfirmed){
 							mail.send("!Bienvenido a Mensajería!", mail_template.doctor_new_account(object,url), object.email);
 						}
@@ -2892,7 +2892,7 @@ exports.verifyAccount= function(req,res){
 					}
 					else{
 						if(result){
-							var url = 'http://'+webapp;
+							var url = webapp;
 							if(!checkIfConfirmed){
 								mail.send("!Bienvenido a Mensajería!", mail_template.user_new_account(object,url), user.email);
 							}
@@ -3231,7 +3231,7 @@ var browserAccountRedirect = function (req,res,data){
 	
 	if (/like Mac OS X/.test(ua)) {
 		console.log("Caso MACOSX");
-	    res.redirect('http://'+webapp+'/#/account_activation/'+data.type+'/'+data.email);
+	    res.redirect(webapp+'/#/account_activation/'+data.type+'/'+data.email);
 		return;
 	}
 	
@@ -3247,13 +3247,13 @@ var browserAccountRedirect = function (req,res,data){
 	}
 	if (/(Intel|PPC) Mac OS X/.test(ua)){
 		console.log("Caso INTEL PPC MACOSX");
-		res.redirect('http://'+webapp+'/#/account_activation/'+data.type+'/'+data.email);
+		res.redirect(webapp+'/#/account_activation/'+data.type+'/'+data.email);
 		return;
 	}
 	
 	if (/Windows NT/.test(ua)){
 		console.log("Caso WINDOWS NT");
-		res.redirect('http://'+webapp+'/#/account_activation/'+data.type+'/'+data.email);
+		res.redirect(webapp+'/#/account_activation/'+data.type+'/'+data.email);
 		return;
 	}	
 };
@@ -3661,7 +3661,7 @@ exports.passwordRedirect = function (req, res){
 	
 	if (/like Mac OS X/.test(ua)) {
 		console.log("Caso MACOSX");
-		res.redirect('http://'+webapp+'/#/NewPassword/'+req.params.token+'/'+req.params.type+'/'+req.params.request+'/'+req.params.email);
+		res.redirect(webapp+'/#/NewPassword/'+req.params.token+'/'+req.params.type+'/'+req.params.request+'/'+req.params.email);
 		return;
 	}
 	
@@ -3677,7 +3677,7 @@ exports.passwordRedirect = function (req, res){
 	
 	if (/(Intel|PPC) Mac OS X/.test(ua)){
 		console.log("Caso INTEL PPC MAC");
-		res.redirect('http://'+webapp+'/#/NewPassword/'+req.params.token+'/'+req.params.type+'/'+req.params.request+'/'+req.params.email);
+		res.redirect(webapp+'/#/NewPassword/'+req.params.token+'/'+req.params.type+'/'+req.params.request+'/'+req.params.email);
 		return;
 	}
 	
