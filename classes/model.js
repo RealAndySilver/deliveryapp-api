@@ -1328,7 +1328,7 @@ utils.log("Delivery","Recibo:",JSON.stringify(req.body));
 											if (trnObject.status==CONSTANTS.P2P.STATUS.PENDING){
 												createDeliveryItemHelper(req,res,trnObject._id);
 											}else{
-												res.json({status: false, message: "Error creando pedido.", response: "Transaccion rechazada en Place to Pay"});
+												res.json({status: false, message: "Error Procesando el pago. "+resPmt[3], response: "Transaccion rechazada en Place to Pay"});
 											}
 										}else{
 											res.json({status: false, message: "Error creando pedido.", response: errCreateTrn});
