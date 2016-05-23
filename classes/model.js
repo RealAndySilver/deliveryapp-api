@@ -2672,7 +2672,7 @@ exports.restartDeliveryItem = function(req,res){
  *
  * */
 var voidPaymentHelper=function(res,req,dlvrItem,msg){
-	if (object.payment_method===CONSTANTS.PMNT_METHODS.CREDIT){
+	if (dlvrItem.payment_method===CONSTANTS.PMNT_METHODS.CREDIT){
 		PlaceToPayTrn.findOne({_id:dlvrItem.trn_ids[0]},
 			function (errFndP2PTrn,p2pTrn){
 				if (!errFndP2PTrn){
