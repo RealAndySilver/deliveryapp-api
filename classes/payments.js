@@ -19,7 +19,9 @@ var CONSTANTS = {
                                     VOID:'VOID'       
                                 }
                     }
-                };
+    ,
+    STATUS:{ERROR:'0',APPROVED:'1',REJECTED:'2',PENDING:'3'}
+    };
 
 var initClient=function(){
     if (!client){
@@ -249,6 +251,46 @@ exports.capturePaymentUsingToken=function(token,customerIP,invoiceNum,amount,cus
     });
 };
 
+/*
+* Returns the list of possible values for the P2P response
+*
+* */
+exports.getStatusList=function(){
+    return CONSTANTS.STATUS;
+};
+
+/*
+ * Returns the list of possible values for the P2P response
+ *
+ * */
+exports.getTrnTypes=function(){
+    return CONSTANTS.TRN_TYPES;
+};
+
+/*
+* Resolves the status name according to a value
+*
+* */
+exports.getStatusText=function(statusId){
+    if (CONSTANTS.STATUS.APPROVED===statusId){
+        return "Aprobada";
+    }
+    if (CONSTANTS.STATUS.PENDING===statusId){
+        return "Pendiente";
+    }
+    if (CONSTANTS.STATUS.ERROR===statusId){
+        return "Error";
+    }
+    if (CONSTANTS.STATUS.REJECTED===statusId){
+        return "Rechazada";
+    }
+    return "";
+};
+
+/*
+*
+* Determines the Franchise of Card
+* */
 exports.getFranchiseByBIN = function (number){
     var franchise="NA";
     //VISA

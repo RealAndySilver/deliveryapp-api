@@ -40,7 +40,7 @@ mongoose.connect("mongodb://vueltap:vueltap123@ds015909.mlab.com:15909/vueltap")
 //Producción
 //var hostname = "vueltap.com:8080";
 //var webapp = "https://vueltap.com"
-//var webRootFolder = "/"
+//var webRootFolder = "/vueltap/"
 //Dev
 var hostname = "192.241.187.135:2000";
 var webapp = "http://192.185.136.242"
@@ -51,7 +51,6 @@ var verifyEmailVar = true;
 var CONSTANTS = {
 	DISCLAIMER_USER_PATH:webapp+webRootFolder+'assets/pdf/TermsUsuario.pdf',
 	DISCLAIMER_MESSENGER_PATH:webapp+webRootFolder+'assets/pdf/TermsMensajero.pdf',
-	P2P: {STATUS:{ERROR:'0',APPROVED:'1',REJECTED:'2',PENDING:'3'}},
 	STATUS : {
 		SYSTEM : {
 			AVAILABLE : 'available',
@@ -299,7 +298,7 @@ var PaymentTokenSchema= new mongoose.Schema({
 //////////////////////////////////
 //SubDocumentSchema///////////////
 //////////////////////////////////
-var PlaceToPayTrnSchema = new mongoose.Schema({user_id : {type: String, required:true},p2p_trn_id:String, p2p_response:String, date_sent:String, status:String,ip_address:String,is_capture:Boolean});
+var PlaceToPayTrnSchema = new mongoose.Schema({user_id : {type: String, required:true},p2p_trn_id:String, p2p_response:String, date_sent:String, status:String,ip_address:String,trn_type:String});
 PlaceToPayTrn= mongoose.model('PlaceToPayTrn',PlaceToPayTrnSchema);
 //////////////////////////////////
 //End SubDocumentSchema///////////
@@ -1322,10 +1321,10 @@ utils.log("Delivery","Recibo:",JSON.stringify(req.body));
 							function(errorCreatePmnt,resPmt){
 								if (!errorCreatePmnt){
 									//console.log("RES ",resPmt);
-									new PlaceToPayTrn({user_id : req.body.user_id,p2p_trn_id:resPmt[45], p2p_response:resPmt, date_sent:new Date(), status:resPmt[0],ip_address:req.body.ip_address,is_capture:true}).save(
+									new PlaceToPayTrn({user_id : req.body.user_id,p2p_trn_id:resPmt[45], p2p_response:resPmt, date_sent:new Date(), status:resPmt[0],ip_address:req.body.ip_address,trn_type:resPmt[11]}).save(
 									function(errCreateTrn,trnObject){
 										if (!errCreateTrn){
-											if (trnObject.status==CONSTANTS.P2P.STATUS.PENDING){
+											if (trnObject.status==payments.getStatusList().PENDING){
 												createDeliveryItemHelper(req,res,trnObject._id);
 											}else{
 												res.json({status: false, message: "Error Procesando el pago. "+resPmt[3], response: "Transaccion rechazada en Place to Pay"});
@@ -1973,7 +1972,7 @@ var settlePaymentHelper=function(res,req,dlvrItem,callback){
 						payments.settleTransaction(p2pTrn.p2p_trn_id,p2pTrn.ip_address,pmntTkn.franchise,
 						function(errorPayment, body){
 							var resPmt=body.split(',');
-							new PlaceToPayTrn({user_id : p2pTrn.user_id,p2p_trn_id:resPmt[45], p2p_response:resPmt, date_sent:new Date(), status:resPmt[0],ip_address:p2pTrn.ip_address,is_capture:false}).save(
+							new PlaceToPayTrn({user_id : p2pTrn.user_id,p2p_trn_id:resPmt[45], p2p_response:resPmt, date_sent:new Date(), status:resPmt[0],ip_address:p2pTrn.ip_address,trn_type:resPmt[11]}).save(
 							function(errCreateTrn,trnObject){
 								dlvrItem.trn_ids.push(trnObject._id);
 								dlvrItem.save(
@@ -2154,7 +2153,7 @@ exports.changeStatus = function(req,res){
 										settlePaymentHelper(res,req,object,
 										function(errUpdPmnt,resPmnt){
 										//console.log("RESPMNT ",resPmnt);
-										if (!errUpdPmnt && resPmnt[0]===CONSTANTS.P2P.STATUS.APPROVED){
+										if (!errUpdPmnt && resPmnt[0]===payments.getStatusList().APPROVED){
 											res.json({
 											status:true, 
 											message:"DeliveryItem ahora está" + object.status, 
@@ -2191,7 +2190,7 @@ exports.changeStatus = function(req,res){
 									settlePaymentHelper(res,req,object,
 									function(errUpdPmnt,resPmnt){
 										//console.log("RESPMNT ",resPmnt);
-										if (!errUpdPmnt && resPmnt[0]===CONSTANTS.P2P.STATUS.APPROVED){
+										if (!errUpdPmnt && resPmnt[0]===payments.getStatusList().APPROVED){
 											res.json({
 											status:true, 
 											message:"DeliveryItem ahora está" + object.status, 
@@ -2416,7 +2415,7 @@ exports.nextStatus = function(req,res){
 									settlePaymentHelper(res,req,object,
 									function(errUpdPmnt,resPmnt){
 										//console.log("RESPMNT ",resPmnt);
-										if (!errUpdPmnt && resPmnt[0]===CONSTANTS.P2P.STATUS.APPROVED){
+										if (!errUpdPmnt && resPmnt[0]===payments.getStatusList().APPROVED){
 											res.json({
 											status:true, 
 											message:"DeliveryItem ahora está" + object.status, 
@@ -2683,7 +2682,7 @@ var voidPaymentHelper=function(res,req,dlvrItem,msg){
 								payments.voidTransaction(p2pTrn.p2p_trn_id,p2pTrn.ip_address,pmntTkn.franchise,
 									function(errorPayment, body){
 										var resPmt=body.split(',');
-										new PlaceToPayTrn({user_id : p2pTrn.user_id,p2p_trn_id:resPmt[45], p2p_response:resPmt, date_sent:new Date(), status:resPmt[0],ip_address:p2pTrn.ip_address,is_capture:false}).save(
+										new PlaceToPayTrn({user_id : p2pTrn.user_id,p2p_trn_id:resPmt[45], p2p_response:resPmt, date_sent:new Date(), status:resPmt[0],ip_address:p2pTrn.ip_address,trn_type:resPmt[11]}).save(
 											function(errCreateTrn,trnObject){
 												/*dlvrItem.trn_ids.push(trnObject._id);
 												dlvrItem.save(
@@ -2691,7 +2690,7 @@ var voidPaymentHelper=function(res,req,dlvrItem,msg){
 														callback(errorPayment,resPmt);
 													});*/
 												if (!errCreateTrn){
-													if (!errorPayment && resPmt[0]===CONSTANTS.P2P.STATUS.APPROVED){
+													if (!errorPayment && resPmt[0]===payments.getStatusList().APPROVED){
 														res.json({
 															status:true,
 															message:msg});
@@ -3586,6 +3585,7 @@ exports.createPaymentMethod = function(req,res){
 Servicio que elimina un metodo de pago asociado a un usuario
 */
 exports.deletePaymentMethod = function(req,res){
+	utils.log("Payments/DeletePaymentMethod","Recibo:",JSON.stringify(req.body));
 	PaymentToken.findOne({_id:req.params.pmt_method_id},exclude,function(err,object){
 		if(!object){
 			res.json({status: false, error: "Payment Method no existe"});
@@ -3616,26 +3616,28 @@ exports.getFranchiseByBIN = function (req,res){
     res.json({status: true, response: franchise});
 };
 
-exports.capturePaymentUsingToken = function (req,res){
-	/*User.findOne({_id:req.body.user_id},exclude,function(err1,object){
-		if(!object){
-			res.json({status: false, error: "User not found"});
-		}
-		else{
-			//console.log ("IP ",req.headers); 
-			//console.log("IP 2 ", req.connection);
-			payments.capturePaymentUsingToken(req.body.token,req.body.customerIP,req.body.invoiceNum,req.body.amount,object,function(error,body){
-				if (error){
-					res.json({status: false, err: error});
-				}else{
-					res.json({status: true, msg: body});
+/*
+*
+* Obtiene el listado de transacciones creadas por el cliente
+*
+* */
+exports.getPaymentHistoryByUser = function (req,res){
+	utils.log("Payments/PaymentHistoryByUser","Recibo:",JSON.stringify(req.body));
+	PlaceToPayTrn.find({user_id:req.params.user_id,trn_type:payments.getTrnTypes().SETTLE}).exec(
+		function(err,objects){
+			if(!err){
+				var resArray =[];
+				for (var i=0; i<objects.length;i++){
+					var resPmnt=objects[i].p2p_response.split(",");
+					var resObject= {amount:resPmnt[9],date:objects[i].date_sent,status:payments.getStatusText(objects[i].status),reference:resPmnt[50],cus:resPmnt[4]};
+					resArray.push(resObject);
 				}
-			});		
-		}
-	});*/
-	payments.settleTransaction("000000");
-	res.json({status: true});
-
+				utils.log("Payments/CreatePaymentMethod","Envio:",JSON.stringify(resArray));
+				res.json({status: true, response: resArray});
+			}else{
+				res.json({status: false, error: "Error obteniendo Historial de Pagos"});
+			}
+		});
 	};
 
 /////////////////////////////////
