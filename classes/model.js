@@ -319,8 +319,197 @@ var client = knox.createClient({
   , bucket: 'vueltap'
 });
 
-//Session
+//////////////////////////////////////////////
 
+var helper={};
+/**
+ *
+ * Este metodo se encarga de crear todos los objetos necesarios para registrar el delivery item en la base de datos
+ * es llamado desde el servicio de CreateDelivery
+ *
+ * */
+helper.createDeliveryItemHelper = function(req,res,trnId){
+    //Creamos de manera correcta los objetos GEO para guardarlos en la base de datos
+    var pickup_location = utils.convertInGeoObject(req.body.pickup_object);
+    var delivery_location = utils.convertInGeoObject(req.body.delivery_object);
+    var tempDlvItem=new DeliveryItem({
+        user_id : req.body.user_id,
+        user_info: req.body.user_info,
+        item_name: req.body.item_name,
+        date_created: new Date(),
+        pickup_location : pickup_location,
+        pickup_details : req.body.pickup_details,
+        pickup_object: req.body.pickup_object,
+        delivery_location : delivery_location,
+        delivery_details : req.body.delivery_details,
+        delivery_object: req.body.delivery_object,
+        roundtrip: req.body.roundtrip,
+        send_image: req.body.send_image,
+        send_signature: req.body.send_signature,
+        signature_object: {status:false, signatureB64:''},
+        insurance: req.body.insurance,
+        insurancevalue: req.body.insurancevalue,
+        instructions : req.body.instructions,
+        priority: req.body.priority,
+        declared_value : req.body.declared_value,
+        price_to_pay : req.body.price_to_pay,
+        payment_method : req.body.payment_method,
+        overall_status : CONSTANTS.OVERALLSTATUS.REQUESTED,
+        status : CONSTANTS.STATUS.SYSTEM.AVAILABLE,
+        time_to_pickup : req.body.time_to_pickup,
+        time_to_deliver: req.body.time_to_deliver,
+        rated : false,
+        images : [],
+        trn_ids : [],
+        payment_token_id:null});
+    if (req.body.payment_method === CONSTANTS.PMNT_METHODS.CREDIT){
+        tempDlvItem.trn_ids=[trnId];
+        tempDlvItem.payment_token_id=req.body.token_id;
+    }
+    tempDlvItem.save(
+        function(errCrtDlvrItm,dlvrItem){
+            if (!errCrtDlvrItm){
+                User.findOneAndUpdate({_id:dlvrItem.user_id},{$inc:{"stats.created_services":1}},
+                    function(errFndUpdUsr, user){
+                        if (!errFndUpdUsr){
+                            res.json({status: true, message: "Pedido creado exitosamente.", response: dlvrItem});
+                        }else{
+                            res.json({status: false, message: "Error creando pedido.", response: errFndUpdUsr});
+                        }
+                    });
+            }else{
+                res.json({status: false, message: "Error creando pedido Item.", response: errCrtDlvrItm});
+            }
+        });
+};
+
+
+/**
+ *
+ *
+ * */
+helper.settlePaymentHelper=function(res,req,dlvrItem,callback){
+    PlaceToPayTrn.findOne({_id:dlvrItem.trn_ids[0]},
+        function (errFndP2PTrn,p2pTrn){
+            if (!errFndP2PTrn){
+                PaymentToken.findOne({_id:dlvrItem.payment_token_id},
+                    function(errFndPmntTkn,pmntTkn){
+                        if (!errFndPmntTkn){
+                            //DEBEMOS ENVIAR TRN A PLACE TO PAY
+                            payments.settleTransaction(p2pTrn.p2p_trn_id,p2pTrn.ip_address,pmntTkn.franchise,
+                                function(errorPayment, body){
+                                    var resPmt=body.split(',');
+                                    new PlaceToPayTrn({user_id : p2pTrn.user_id,p2p_trn_id:resPmt[45], p2p_response:resPmt, date_sent:new Date(), status:resPmt[0],ip_address:p2pTrn.ip_address,trn_type:resPmt[11]}).save(
+                                        function(errCreateTrn,trnObject){
+                                            dlvrItem.trn_ids.push(trnObject._id);
+                                            dlvrItem.save(
+                                                function(errSve,newDelItem){
+                                                    callback(errorPayment,resPmt);
+                                                });
+                                        });
+                                });
+                        }else{
+                            res.json({status: false, error: "Error Procesando Pago "+errFndPmntTkn});
+                        }
+
+                    });
+            }else{
+                res.json({status: false, error: "Error Procesando Pago"+errFndP2PTrn});
+            }
+        });
+};
+
+
+/**
+ * Helper que envia un VOID a p2p de un CAPTURE realizado previamente, este helper es usado desde cancelar servicio de
+ * usuario o mensajero
+ *
+ * */
+helper.voidPaymentHelper=function(res,req,dlvrItem,msg){
+    if (dlvrItem.payment_method===CONSTANTS.PMNT_METHODS.CREDIT){
+        PlaceToPayTrn.findOne({_id:dlvrItem.trn_ids[0]},
+            function (errFndP2PTrn,p2pTrn){
+                if (!errFndP2PTrn){
+                    PaymentToken.findOne({_id:dlvrItem.payment_token_id},
+                        function(errFndPmntTkn,pmntTkn){
+                            if (!errFndPmntTkn){
+                                //DEBEMOS ENVIAR TRN A PLACE TO PAY
+                                payments.voidTransaction(p2pTrn.p2p_trn_id,p2pTrn.ip_address,pmntTkn.franchise,
+                                    function(errorPayment, body){
+                                        var resPmt=body.split(',');
+                                        new PlaceToPayTrn({user_id : p2pTrn.user_id,p2p_trn_id:resPmt[45], p2p_response:resPmt, date_sent:new Date(), status:resPmt[0],ip_address:p2pTrn.ip_address,trn_type:resPmt[11]}).save(
+                                            function(errCreateTrn,trnObject){
+                                                /*dlvrItem.trn_ids.push(trnObject._id);
+                                                 dlvrItem.save(
+                                                 function(errSve,newDelItem){
+                                                 callback(errorPayment,resPmt);
+                                                 });*/
+                                                if (!errCreateTrn){
+                                                    if (!errorPayment && resPmt[0]===payments.getStatusList().APPROVED){
+                                                        res.json({
+                                                            status:true,
+                                                            message:msg});
+                                                    }else{
+                                                        res.json({status: false, error: "Error Updating Payment "+errorPayment});
+                                                    }
+
+                                                }else{
+                                                    res.json({status: false, error: "Error Eliminando Pago "+errFndPmntTkn});
+                                                }
+                                            });
+                                    });
+                            }else{
+                                res.json({status: false, error: "Error Eliminando Pago "+errFndPmntTkn});
+                            }
+
+                        });
+                }else{
+                    res.json({status: false, error: "Error Eliminando Pago"+errFndP2PTrn});
+                }
+            });
+    }else{
+        res.json({
+            status:true,
+            message:msg
+        });
+    }
+};
+
+
+
+/**
+ * Este helper devuelve todos los delivery items de acuerdo al filtro y le agrega la informacion de pago
+ * sobre el objeto pmnt_info.
+ *
+ * */
+helper.findDeliveryItemsWithPmntInfo=function(filter,req,res){
+    var sort = {};
+    if(req.params.sort){
+        sort = utils.isJson(req.params.sort) ? JSON.parse(req.params.sort):req.params.sort;
+    }
+    DeliveryItem.find({user_id:req.params.user_id, $or:[{overall_status:'requested'},{overall_status:'started'}]})
+        .sort(sort.name)
+        .skip(sort.skip)
+        .limit(sort.limit || limitForSort)
+        .exec(function(err,objects){
+            if(err){
+                res.json({status: false, error: "not found"});
+            }
+            else{
+                for (var i=0; i<objects.length;i++){
+                    if ((objects[i]).payment_method===CONSTANTS.PMNT_METHODS.CREDIT){
+                        objects[i]._doc.pmnt_info={status:'TempPendiente',cus:'000Pendiente',date:'datePendiente',reference:'RefPendiente'};
+                    }
+                }
+                res.json({status: true, response: objects});
+            }
+        });
+
+};
+/////////////////////////////////////
+
+
+//Session
 exports.verifySession = function(req,res,next){
     req.info = {};
 	var type = req.headers.type;
@@ -1313,8 +1502,7 @@ utils.log("Delivery","Recibo:",JSON.stringify(req.body));
 	else{
 		res.json({status: false, message: "El objeto delivery_object viene incompleto."});
 	}
-
-
+    
 	//New Implementacion
 	if (req.body.payment_method === CONSTANTS.PMNT_METHODS.CREDIT){
 		User.findOne({_id:req.body.user_id},
@@ -1331,7 +1519,7 @@ utils.log("Delivery","Recibo:",JSON.stringify(req.body));
 									function(errCreateTrn,trnObject){
 										if (!errCreateTrn){
 											if (trnObject.status==payments.getStatusList().PENDING){
-												createDeliveryItemHelper(req,res,trnObject._id);
+												helper.createDeliveryItemHelper(req,res,trnObject._id);
 											}else{
 												res.json({status: false, message: "Error Procesando el pago. "+resPmt[3], response: "Transaccion rechazada en Place to Pay"});
 											}
@@ -1352,70 +1540,10 @@ utils.log("Delivery","Recibo:",JSON.stringify(req.body));
 				}
 		});
 	}else{
-		createDeliveryItemHelper(req,res,null);
+		helper.createDeliveryItemHelper(req,res,null);
 	}
 };
 
-/**
- *
- * Este metodo se encarga de crear todos los objetos necesarios para registrar el delivery item en la base de datos
- * es llamado desde el servicio de CreateDelivery
- *
- * */
-var createDeliveryItemHelper = function(req,res,trnId){
-	//Creamos de manera correcta los objetos GEO para guardarlos en la base de datos
-	var pickup_location = utils.convertInGeoObject(req.body.pickup_object);
-	var delivery_location = utils.convertInGeoObject(req.body.delivery_object);
-	var tempDlvItem=new DeliveryItem({
-		user_id : req.body.user_id,
-		user_info: req.body.user_info,
-		item_name: req.body.item_name,
-		date_created: new Date(),
-		pickup_location : pickup_location,
-		pickup_details : req.body.pickup_details,
-		pickup_object: req.body.pickup_object,
-		delivery_location : delivery_location,	
-		delivery_details : req.body.delivery_details,
-		delivery_object: req.body.delivery_object,
-		roundtrip: req.body.roundtrip,
-		send_image: req.body.send_image,
-		send_signature: req.body.send_signature,
-		signature_object: {status:false, signatureB64:''},
-		insurance: req.body.insurance,
-		insurancevalue: req.body.insurancevalue,
-		instructions : req.body.instructions,
-		priority: req.body.priority,
-		declared_value : req.body.declared_value,
-		price_to_pay : req.body.price_to_pay,
-		payment_method : req.body.payment_method,
-		overall_status : CONSTANTS.OVERALLSTATUS.REQUESTED,
-		status : CONSTANTS.STATUS.SYSTEM.AVAILABLE,
-		time_to_pickup : req.body.time_to_pickup,
-		time_to_deliver: req.body.time_to_deliver,
-		rated : false,
-		images : [],
-		trn_ids : [],
-		payment_token_id:null});
-	if (req.body.payment_method === CONSTANTS.PMNT_METHODS.CREDIT){
-		tempDlvItem.trn_ids=[trnId];
-		tempDlvItem.payment_token_id=req.body.token_id;
-	}
-	tempDlvItem.save(
-	function(errCrtDlvrItm,dlvrItem){
-		if (!errCrtDlvrItm){
-			User.findOneAndUpdate({_id:dlvrItem.user_id},{$inc:{"stats.created_services":1}}, 
-			function(errFndUpdUsr, user){
-				if (!errFndUpdUsr){
-					res.json({status: true, message: "Pedido creado exitosamente.", response: dlvrItem});
-				}else{
-					res.json({status: false, message: "Error creando pedido.", response: errFndUpdUsr});
-				}
-			});
-		}else{
-			res.json({status: false, message: "Error creando pedido Item.", response: errCrtDlvrItm});
-		}
-	});
-};
 
 //Read One
 exports.getDeliveryItemByID = function(req,res){
@@ -1565,66 +1693,43 @@ exports.getByOverallStatus = function(req,res){
 		}
 	});
 };
+
+
+
+/**
+ * Servicio /DeliveryItem/UserActive
+ * Retorna los servicio activos
+ *
+ * */
 exports.getUserActive = function(req,res){
 	//Esta función expone un servicio para buscar todos los DeliveryItems sin ningún criterio de búsqueda
 	//Pendiente filtrado y límite
-	var sort = {};
-	if(req.params.sort){
-		sort = utils.isJson(req.params.sort) ? JSON.parse(req.params.sort):req.params.sort;
-	}
-	DeliveryItem.find({user_id:req.params.user_id, $or:[{overall_status:'requested'},{overall_status:'started'}]})
-	.sort(sort.name)
-	.skip(sort.skip)
-	.limit(sort.limit || limitForSort)
-	.exec(function(err,objects){
-		if(err){
-			res.json({status: false, error: "not found"});
-		}
-		else{
-			res.json({status: true, response: objects});
-		}
-	});
+
+    var filter={user_id:req.params.user_id, $or:[{overall_status:'requested'},{overall_status:'started'}]};
+    helper.findDeliveryItemsWithPmntInfo(filter,req,res);
 };
+/**
+ * Servicio /DeliveryItem/UserFinished
+ * Retorna los servicio terminados
+ *
+ * */
 exports.getUserFinished = function(req,res){
 	//Esta función expone un servicio para buscar todos los DeliveryItems sin ningún criterio de búsqueda
 	//Pendiente filtrado y límite
-	var sort = {};
-	if(req.params.sort){
-		sort = utils.isJson(req.params.sort) ? JSON.parse(req.params.sort):req.params.sort;
-	}
-	DeliveryItem.find({user_id:req.params.user_id, overall_status:'finished'})
-	.sort(sort.name)
-	.skip(sort.skip)
-	.limit(sort.limit || limitForSort)
-	.exec(function(err,objects){
-		if(err){
-			res.json({status: false, error: "not found"});
-		}
-		else{
-			res.json({status: true, response: objects});
-		}
-	});
+    var filter={user_id:req.params.user_id, overall_status:'finished'};
+    helper.findDeliveryItemsWithPmntInfo(filter,req,res);
 };
+/**
+ * Servicio /DeliveryItem/UserAborted
+ * Retorna los servicio abortados
+ *
+ * */
 exports.getUserAborted = function(req,res){
 	//Esta función expone un servicio para buscar todos los DeliveryItems Abortados sin ningún criterio de búsqueda
 	//Pendiente filtrado y límite
-	var sort = {};
-	if(req.params.sort){
-		sort = utils.isJson(req.params.sort) ? JSON.parse(req.params.sort):req.params.sort;
-	}
-	DeliveryItem.find({user_id:req.params.user_id, overall_status:CONSTANTS.OVERALLSTATUS.ABORTED})
-	.sort(sort.name)
-	.skip(sort.skip)
-	.limit(sort.limit || limitForSort)
-	.exec(function(err,objects){
-		if(err){
-			res.json({status: false, error: "not found"});
-		}
-		else{
-			utils.log("DeliveryItem/GetUserAborted/","Envío:",JSON.stringify(objects));
-			res.json({status: true, response: objects});
-		}
-	});
+	var filter={user_id:req.params.user_id, overall_status:CONSTANTS.OVERALLSTATUS.ABORTED};
+    helper.findDeliveryItemsWithPmntInfo(filter,req,res);
+
 };
 exports.getCountWithStatus = function(req,res){
 	var query = {};
@@ -1897,43 +2002,6 @@ exports.changeStatusReturning = function(req,res){
 	});
 };
 
-/*
-*
-*
-*
-* */
-var settlePaymentHelper=function(res,req,dlvrItem,callback){
-	PlaceToPayTrn.findOne({_id:dlvrItem.trn_ids[0]},
-		function (errFndP2PTrn,p2pTrn){
-			if (!errFndP2PTrn){
-				PaymentToken.findOne({_id:dlvrItem.payment_token_id},
-				function(errFndPmntTkn,pmntTkn){
-					if (!errFndPmntTkn){
-						//DEBEMOS ENVIAR TRN A PLACE TO PAY
-						payments.settleTransaction(p2pTrn.p2p_trn_id,p2pTrn.ip_address,pmntTkn.franchise,
-						function(errorPayment, body){
-							var resPmt=body.split(',');
-							new PlaceToPayTrn({user_id : p2pTrn.user_id,p2p_trn_id:resPmt[45], p2p_response:resPmt, date_sent:new Date(), status:resPmt[0],ip_address:p2pTrn.ip_address,trn_type:resPmt[11]}).save(
-							function(errCreateTrn,trnObject){
-								dlvrItem.trn_ids.push(trnObject._id);
-								dlvrItem.save(
-								function(errSve,newDelItem){
-									callback(errorPayment,resPmt);	
-								});
-							});
-						});
-					}else{
-						res.json({status: false, error: "Error Procesando Pago "+errFndPmntTkn});
-					}
-
-				});
-			}else{
-				res.json({status: false, error: "Error Procesando Pago"+errFndP2PTrn});
-			}
-		});
-};
-
-
 exports.changeStatusReturned = function(req,res){
 	utils.log("DeliveryItem/Status/Returning/"+req.params.delivery_id,"Recibo:",JSON.stringify(req.body));
 	if(req.body.messenger_info){
@@ -2091,7 +2159,7 @@ exports.changeStatus = function(req,res){
 									{$inc:{"stats.finished_services":1}}, 
 									function(err, user){
 									if (object.payment_method===CONSTANTS.PMNT_METHODS.CREDIT){
-										settlePaymentHelper(res,req,object,
+                                        helper.settlePaymentHelper(res,req,object,
 										function(errUpdPmnt,resPmnt){
 										//console.log("RESPMNT ",resPmnt);
 										if (!errUpdPmnt && resPmnt[0]===payments.getStatusList().APPROVED){
@@ -2128,7 +2196,7 @@ exports.changeStatus = function(req,res){
    									{$inc:{"stats.finished_services":1}}, 
    							function(err, user){
    								if (object.payment_method===CONSTANTS.PMNT_METHODS.CREDIT){
-									settlePaymentHelper(res,req,object,
+                                    helper.settlePaymentHelper(res,req,object,
 									function(errUpdPmnt,resPmnt){
 										//console.log("RESPMNT ",resPmnt);
 										if (!errUpdPmnt && resPmnt[0]===payments.getStatusList().APPROVED){
@@ -2353,7 +2421,7 @@ exports.nextStatus = function(req,res){
 							Messenger.findOneAndUpdate({_id:req.body.messenger_info._id},{$inc:{"stats.finished_services":1}}, 
 	   						function(err, user){
 		   						if (object.payment_method===CONSTANTS.PMNT_METHODS.CREDIT){
-									settlePaymentHelper(res,req,object,
+                                    helper.settlePaymentHelper(res,req,object,
 									function(errUpdPmnt,resPmnt){
 										//console.log("RESPMNT ",resPmnt);
 										if (!errUpdPmnt && resPmnt[0]===payments.getStatusList().APPROVED){
@@ -2606,60 +2674,6 @@ exports.restartDeliveryItem = function(req,res){
 	});	
 };
 
-/**
- * Helper que envia un VOID a p2p de un CAPTURE realizado previamente, este helper es usado desde cancelar servicio de
- * usuario o mensajero
- *
- * */
-var voidPaymentHelper=function(res,req,dlvrItem,msg){
-	if (dlvrItem.payment_method===CONSTANTS.PMNT_METHODS.CREDIT){
-		PlaceToPayTrn.findOne({_id:dlvrItem.trn_ids[0]},
-			function (errFndP2PTrn,p2pTrn){
-				if (!errFndP2PTrn){
-					PaymentToken.findOne({_id:dlvrItem.payment_token_id},
-						function(errFndPmntTkn,pmntTkn){
-							if (!errFndPmntTkn){
-								//DEBEMOS ENVIAR TRN A PLACE TO PAY
-								payments.voidTransaction(p2pTrn.p2p_trn_id,p2pTrn.ip_address,pmntTkn.franchise,
-									function(errorPayment, body){
-										var resPmt=body.split(',');
-										new PlaceToPayTrn({user_id : p2pTrn.user_id,p2p_trn_id:resPmt[45], p2p_response:resPmt, date_sent:new Date(), status:resPmt[0],ip_address:p2pTrn.ip_address,trn_type:resPmt[11]}).save(
-											function(errCreateTrn,trnObject){
-												/*dlvrItem.trn_ids.push(trnObject._id);
-												dlvrItem.save(
-													function(errSve,newDelItem){
-														callback(errorPayment,resPmt);
-													});*/
-												if (!errCreateTrn){
-													if (!errorPayment && resPmt[0]===payments.getStatusList().APPROVED){
-														res.json({
-															status:true,
-															message:msg});
-													}else{
-														res.json({status: false, error: "Error Updating Payment "+errorPayment});
-													}
-
-												}else{
-													res.json({status: false, error: "Error Eliminando Pago "+errFndPmntTkn});
-												}
-											});
-									});
-							}else{
-								res.json({status: false, error: "Error Eliminando Pago "+errFndPmntTkn});
-							}
-
-						});
-				}else{
-					res.json({status: false, error: "Error Eliminando Pago"+errFndP2PTrn});
-				}
-			});
-	}else{
-		res.json({
-			status:true,
-			message:msg
-		});
-	}
-};
 
 //Delete
 exports.deleteDeliveryItem = function(req,res){
@@ -2676,7 +2690,7 @@ exports.deleteDeliveryItem = function(req,res){
 						res.json({status: false, error: "No se pudo borrar ya que no se encontró el item"});
 					}
 					else{
-						voidPaymentHelper(res,req,object,"DeliveryItem en estado available borrado exitosamente.");
+						helper.voidPaymentHelper(res,req,object,"DeliveryItem en estado available borrado exitosamente.");
 					}
 				});
 			}
@@ -2688,7 +2702,7 @@ exports.deleteDeliveryItem = function(req,res){
 					}
 					else{
 						//En este punto se le debe alertar al motorizado que el servicio fue cancelado
-						voidPaymentHelper(res,req,object,"DeliveryItem en estado accepted borrado exitosamente.");
+						helper.voidPaymentHelper(res,req,object,"DeliveryItem en estado accepted borrado exitosamente.");
 					}
 				});
 			}
@@ -2700,7 +2714,7 @@ exports.deleteDeliveryItem = function(req,res){
 					}
 					else{
 						//En este punto se le debe alertar al motorizado que el servicio fue cancelado
-						voidPaymentHelper(res,req,object,"DeliveryItem en estado accepted borrado exitosamente.");
+						helper.voidPaymentHelper(res,req,object,"DeliveryItem en estado accepted borrado exitosamente.");
 					}
 				});
 			}
@@ -3483,7 +3497,7 @@ exports.getPaymentMethodsByUser = function(req,res){
 
 /**
 *Servicio que crea un nuevo metodo de pago asociado a un usuario
-*/
+**/
 exports.createPaymentMethod = function(req,res){
 	utils.log("Payments/CreatePaymentMethod","Recibo:",JSON.stringify(req.body));
 	User.findOne({_id:req.body.user_id},exclude,function(err1,object){
