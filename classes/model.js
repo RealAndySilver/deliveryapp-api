@@ -1282,7 +1282,13 @@ exports.messengerInvite = function(req,res){
 //////////////////////////////////
 //Delivery CRUD starts here///////
 //////////////////////////////////
-//Create*
+
+
+/**
+ * This service creates a new Delivery Item and sends a Capture to the PLace 2 Pay platform if payment type
+ * Credit Card
+ *
+ * */
 exports.createDelivery = function(req,res){
 //Esta función crea un DeliveryItem nuevo a partir de una peticion POST
 //Procedemos a crear el item en la base de datos con la información que llega en el POST
@@ -1348,85 +1354,14 @@ utils.log("Delivery","Recibo:",JSON.stringify(req.body));
 	}else{
 		createDeliveryItemHelper(req,res,null);
 	}
-
-	//END
-	
-	/*new DeliveryItem({
-		user_id : req.body.user_id,
-		user_info: req.body.user_info,
-		item_name: req.body.item_name,
-		date_created: new Date(),
-		pickup_location : pickup_location,
-		pickup_details : req.body.pickup_details,
-		pickup_object: req.body.pickup_object,
-		delivery_location : delivery_location,	
-		delivery_details : req.body.delivery_details,
-		delivery_object: req.body.delivery_object,
-		roundtrip: req.body.roundtrip,
-		send_image: req.body.send_image,
-		send_signature: req.body.send_signature,
-		signature_object: {status:false, signatureB64:''},
-		insurance: req.body.insurance,
-		insurancevalue: req.body.insurancevalue,
-		instructions : req.body.instructions,
-		priority: req.body.priority,
-		declared_value : req.body.declared_value,
-		price_to_pay : req.body.price_to_pay,
-		payment_method : req.body.payment_method,
-		overall_status : CONSTANTS.OVERALLSTATUS.REQUESTED,
-		status : CONSTANTS.STATUS.SYSTEM.AVAILABLE,
-		time_to_pickup : req.body.time_to_pickup,
-		time_to_deliver: req.body.time_to_deliver,
-		rated : false,
-		images : [],
-		payment_token_id:req.body.token_id,
-	}).save(function(err,dlvrItem){
-		if(err){
-			res.json({status: false, message: "Error creando pedido.", response: err});
-		}
-		else{
-			//utils.log("Messenger","Envío:",JSON.stringify(object));
-			User.findOneAndUpdate({_id:dlvrItem.user_id},{$inc:{"stats.created_services":1}}, function(errFndUpd, user){
-				if (!errFndUpd){
-					if (req.body.payment_method === CONSTANTS.PMNT_METHODS.CREDIT){
-						PaymentToken.findOne({_id:req.body.token_id},function(errPmtTkn,pmntToken){
-							if (!errPmtTkn){
-								payments.capturePaymentUsingToken(pmntToken.token,req.body.ip_address,'123456',req.body.price_to_pay,user,function(errorCreatePmnt,resPmt){
-								console.log("Respuesta ",resPmt);
-								if (!errorCreatePmnt && resPmt[0]=='3'){
-									DeliveryItem.findOneAndUpdate({_id:dlvrItem._id},
-				   									{"trn_id":trnObject._id}, 
-				   									function(errUpdate, object){
-				   										if (!errUpdate){
-				   											res.json({status: true, message: "Pedido creado exitosamente.", response: dlvrItem});
-				   										}else{
-				   											console.log("ERROR ACTUALIZANDO ",errUpdate);
-				   											res.json({status: true, message: "Pedido creado exitosamente. Con fallas en el pago", response: dlvrItem});
-				   										}
-				   										
-					   								});	
-								}else{
-									console.log("ERROR ENVIANDO PAGO ",errorCreatePmnt);
-									res.json({status: true, message: "Pedido creado exitosamente. Con fallas en el pago", response: dlvrItem});
-								}
-								});	
-							}else{
-								res.json({status: false, message: "Error creando pedido.", response: errPmtTkn});
-							}
-						});
-						}else{
-							res.json({status: true, message: "Pedido creado exitosamente.", response: dlvrItem});
-						}	
-					}else{
-						res.json({status: false, message: "Error creando pedido.", response: errFndUpd});
-					}
-					
-			});
-		}
-	});*/
 };
 
-
+/**
+ *
+ * Este metodo se encarga de crear todos los objetos necesarios para registrar el delivery item en la base de datos
+ * es llamado desde el servicio de CreateDelivery
+ *
+ * */
 var createDeliveryItemHelper = function(req,res,trnId){
 	//Creamos de manera correcta los objetos GEO para guardarlos en la base de datos
 	var pickup_location = utils.convertInGeoObject(req.body.pickup_object);
@@ -1537,6 +1472,12 @@ exports.getAllDeliveryItemsByStatus = function(req,res){
 		}
 	});
 };
+
+
+/**
+ *
+ *Servicio usado por la aplicacion de mensajero para obtener los servicios cercanos que pueden ser tomados por el
+ * */
 exports.getNearDeliveryItems = function(req,res){
 	var query = {};
 	var meters = "";
@@ -2590,7 +2531,7 @@ exports.abortDeliveryItem = function(req,res){
 		   	else{
 			   	if(object.status == CONSTANTS.STATUS.SYSTEM.ACCEPTED){
 					object.status = CONSTANTS.STATUS.SYSTEM.AVAILABLE;
-					object.overall_status = CONSTANTS.OVERALLSTATUS.REQUESTED;
+                    object.overall_status = CONSTANTS.OVERALLSTATUS.REQUESTED;
 					object.messenger_info = {};
 					object.messenger_id = '';
 					object.save(function(err, result){
@@ -2665,9 +2606,9 @@ exports.restartDeliveryItem = function(req,res){
 	});	
 };
 
-
-/*
- *
+/**
+ * Helper que envia un VOID a p2p de un CAPTURE realizado previamente, este helper es usado desde cancelar servicio de
+ * usuario o mensajero
  *
  * */
 var voidPaymentHelper=function(res,req,dlvrItem,msg){
@@ -3523,8 +3464,8 @@ var notifyEvent = function(type,inputObject,status){
 //////// Payments ///////////////
 /////////////////////////////////
 
-/*
-Funcion que retorna los metodos de pagos disponibles por el id de usuario
+/**
+*Funcion que retorna los metodos de pagos disponibles por el id de usuario
 */
 exports.getPaymentMethodsByUser = function(req,res){
 	//console.log ("User ",req.params.user_id);
@@ -3540,8 +3481,8 @@ exports.getPaymentMethodsByUser = function(req,res){
 }
 
 
-/*
-Funcion que crea un nuevo metodo de pago asociado a un usuario
+/**
+*Servicio que crea un nuevo metodo de pago asociado a un usuario
 */
 exports.createPaymentMethod = function(req,res){
 	utils.log("Payments/CreatePaymentMethod","Recibo:",JSON.stringify(req.body));
@@ -3580,9 +3521,8 @@ exports.createPaymentMethod = function(req,res){
 	});
 }
 
-
-/*
-Servicio que elimina un metodo de pago asociado a un usuario
+/**
+ *Servicio que elimina un metodo de pago asociado a un usuario
 */
 exports.deletePaymentMethod = function(req,res){
 	utils.log("Payments/DeletePaymentMethod","Recibo:",JSON.stringify(req.body));
@@ -3610,15 +3550,17 @@ exports.deletePaymentMethod = function(req,res){
 	});
 };
 
-
+/**
+ * Calcula la franquicia de una tarjeta de acuerdo al numero enviado como franquicia
+ * */
 exports.getFranchiseByBIN = function (req,res){
     var franchise=payments.getFranchiseByBIN(req.params.bin?req.params.bin:"");
     res.json({status: true, response: franchise});
 };
 
-/*
+/**
 *
-* Obtiene el listado de transacciones creadas por el cliente
+* Obtiene el listado de transacciones enviadas a p2p
 *
 * */
 exports.getPaymentHistoryByUser = function (req,res){
