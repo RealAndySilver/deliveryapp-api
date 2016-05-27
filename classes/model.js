@@ -3622,17 +3622,17 @@ exports.getFranchiseByBIN = function (req,res){
 *
 * */
 exports.getPaymentHistoryByUser = function (req,res){
-	utils.log("Payments/PaymentHistoryByUser","Recibo:",JSON.stringify(req.body));
-	PlaceToPayTrn.find({user_id:req.params.user_id,trn_type:payments.getTrnTypes().SETTLE}).exec(
+	utils.log("Payments/PaymentHistoryByUser","Recibo:",JSON.stringify(req.params));
+	PlaceToPayTrn.find({user_id:req.params.user_id/*,trn_type:payments.getTrnTypes().SETTLE*/	}).exec(
 		function(err,objects){
 			if(!err){
 				var resArray =[];
 				for (var i=0; i<objects.length;i++){
 					var resPmnt=objects[i].p2p_response.split(",");
-					var resObject= {amount:resPmnt[9],date:objects[i].date_sent,status:payments.getStatusText(objects[i].status),reference:resPmnt[50],cus:resPmnt[4]};
+					var resObject= {amount:resPmnt[9],date:objects[i].date_sent,status:objects[i].trn_type+" - "+payments.getStatusText(objects[i].status),reference:resPmnt[50],cus:resPmnt[4],p2p_response:objects[i].p2p_response};
 					resArray.push(resObject);
 				}
-				utils.log("Payments/CreatePaymentMethod","Envio:",JSON.stringify(resArray));
+				utils.log("Payments/PaymentHistoryByUser","Envio:",JSON.stringify(resArray));
 				res.json({status: true, response: resArray});
 			}else{
 				res.json({status: false, error: "Error obteniendo Historial de Pagos"});

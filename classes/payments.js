@@ -264,7 +264,7 @@ exports.getStatusList=function(){
  *
  * */
 exports.getTrnTypes=function(){
-    return CONSTANTS.TRN_TYPES;
+    return CONSTANTS.P2P_PARAMS.TRN_TYPES;
 };
 
 /*
