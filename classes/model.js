@@ -222,6 +222,7 @@ var DeliveryItemSchema= new mongoose.Schema({
 	date_created: {type: Date},
 	declared_value : {type: Number, required:false},
 	price_to_pay : {type: Number, required:false},
+    service_price : {type: Number, required:false},
 	payment_method : {type: String, required:false}, //credit , cash
 	payment_token_id : {type: String, required:false},
 	trn_ids :[{type: mongoose.Schema.Types.ObjectId, ref: 'PlaceToPayTrn',required:false}], //stores the transaction id sent by p2p
@@ -298,7 +299,18 @@ var PaymentTokenSchema= new mongoose.Schema({
 //////////////////////////////////
 //SubDocumentSchema///////////////
 //////////////////////////////////
-var PlaceToPayTrnSchema = new mongoose.Schema({user_id : {type: String, required:true},p2p_trn_id:String, p2p_response:String, date_sent:String, status:String,ip_address:String,trn_type:String});
+var PlaceToPayTrnSchema = new mongoose.Schema({
+    user_id : {type: String, required:true},
+    p2p_trn_id:String,
+    p2p_response:String,
+    date_sent:String,
+    status:String,
+    status_text:String,
+    ip_address:String,
+    trn_type:String,
+    reference:String,
+    cus:String,
+    amount:String});
 PlaceToPayTrn= mongoose.model('PlaceToPayTrn',PlaceToPayTrnSchema);
 //////////////////////////////////
 //End SubDocumentSchema///////////
@@ -349,6 +361,7 @@ helper.createDeliveryItemHelper = function(req,res,trnId){
         signature_object: {status:false, signatureB64:''},
         insurance: req.body.insurance,
         insurancevalue: req.body.insurancevalue,
+        service_price : req.body.service_price,
         instructions : req.body.instructions,
         priority: req.body.priority,
         declared_value : req.body.declared_value,
@@ -399,7 +412,8 @@ helper.settlePaymentHelper=function(res,req,dlvrItem,callback){
                             payments.settleTransaction(p2pTrn.p2p_trn_id,p2pTrn.ip_address,pmntTkn.franchise,
                                 function(errorPayment, body){
                                     var resPmt=body.split(',');
-                                    new PlaceToPayTrn({user_id : p2pTrn.user_id,p2p_trn_id:resPmt[45], p2p_response:resPmt, date_sent:new Date(), status:resPmt[0],ip_address:p2pTrn.ip_address,trn_type:resPmt[11]}).save(
+                                    var p2pTrnObject=helper.populatePlacetoPayTrnFromP2PResponse(p2pTrn.user_id,p2pTrn.ip_address,resPmt);
+                                    p2pTrnObject.save(
                                         function(errCreateTrn,trnObject){
                                             dlvrItem.trn_ids.push(trnObject._id);
                                             dlvrItem.save(
@@ -437,7 +451,8 @@ helper.voidPaymentHelper=function(res,req,dlvrItem,msg){
                                 payments.voidTransaction(p2pTrn.p2p_trn_id,p2pTrn.ip_address,pmntTkn.franchise,
                                     function(errorPayment, body){
                                         var resPmt=body.split(',');
-                                        new PlaceToPayTrn({user_id : p2pTrn.user_id,p2p_trn_id:resPmt[45], p2p_response:resPmt, date_sent:new Date(), status:resPmt[0],ip_address:p2pTrn.ip_address,trn_type:resPmt[11]}).save(
+                                        var p2pTrnObject=helper.populatePlacetoPayTrnFromP2PResponse(p2pTrn.user_id,p2pTrn.ip_address,resPmt);
+                                        p2pTrnObject.save(
                                             function(errCreateTrn,trnObject){
                                                 /*dlvrItem.trn_ids.push(trnObject._id);
                                                  dlvrItem.save(
@@ -476,7 +491,6 @@ helper.voidPaymentHelper=function(res,req,dlvrItem,msg){
 };
 
 
-
 /**
  * Este helper devuelve todos los delivery items de acuerdo al filtro y le agrega la informacion de pago
  * sobre el objeto pmnt_info.
@@ -491,21 +505,35 @@ helper.findDeliveryItemsWithPmntInfo=function(filter,req,res){
         .sort(sort.name)
         .skip(sort.skip)
         .limit(sort.limit || limitForSort)
-        .exec(function(err,objects){
+        .populate({
+            path: 'trn_ids',
+            match: { trn_type:payments.getTrnTypes().CAPTURE_ONLY}
+        }).exec(function(err,objects){
             if(err){
                 res.json({status: false, error: "not found"});
             }
             else{
-                for (var i=0; i<objects.length;i++){
-                    if ((objects[i]).payment_method===CONSTANTS.PMNT_METHODS.CREDIT){
-                        objects[i]._doc.pmnt_info={status:'TempPendiente',cus:'000Pendiente',date:'datePendiente',reference:'RefPendiente'};
-                    }
-                }
                 res.json({status: true, response: objects});
             }
         });
 
 };
+
+helper.populatePlacetoPayTrnFromP2PResponse=function(p_user_id,p_ip_address,p2pResArray){
+    return new PlaceToPayTrn({
+        user_id : p_user_id,
+        p2p_trn_id:p2pResArray[45],
+        p2p_response:p2pResArray,
+        date_sent:new Date(),
+        status:p2pResArray[0],
+        ip_address:p_ip_address,
+        trn_type:p2pResArray[11],
+        reference:p2pResArray[50],
+        cus:p2pResArray[4],
+        amount:p2pResArray[9],
+        status_text:payments.getStatusText(p2pResArray[0])});
+};
+
 /////////////////////////////////////
 
 
@@ -1515,7 +1543,8 @@ utils.log("Delivery","Recibo:",JSON.stringify(req.body));
 							function(errorCreatePmnt,resPmt){
 								if (!errorCreatePmnt){
 									//console.log("RES ",resPmt);
-									new PlaceToPayTrn({user_id : req.body.user_id,p2p_trn_id:resPmt[45], p2p_response:resPmt, date_sent:new Date(), status:resPmt[0],ip_address:req.body.ip_address,trn_type:resPmt[11]}).save(
+                                    var p2pTrnObject=helper.populatePlacetoPayTrnFromP2PResponse(req.body.user_id,req.body.ip_address,resPmt);
+                                    p2pTrnObject.save(
 									function(errCreateTrn,trnObject){
 										if (!errCreateTrn){
 											if (trnObject.status==payments.getStatusList().PENDING){
@@ -1548,12 +1577,15 @@ utils.log("Delivery","Recibo:",JSON.stringify(req.body));
 //Read One
 exports.getDeliveryItemByID = function(req,res){
 	//Esta función expone un servicio para buscar un DeliveryItem por id
-	DeliveryItem.findOne({_id:req.params.delivery_id},function(err,object){
+    filter={_id:req.params.delivery_id};
+	DeliveryItem.findOne({_id:req.params.delivery_id}).populate({
+        path: 'trn_ids',
+        match: { trn_type:payments.getTrnTypes().CAPTURE_ONLY}
+    }).exec(function(err,object){
 		if(!object){
 			res.json({status: false, error: "not found"});
 		}
 		else{
-			console.log("object: ",{status: true, response: object});
 			res.json({status: true, response: object});
 		}
 	});
@@ -3372,7 +3404,6 @@ exports.getInsuranceIntervals = function(req,res){
 		1900000,
 		2000000
 	];
-	
 	res.json({status: true, response: insuranceIntervals});
 }
 
@@ -3582,14 +3613,8 @@ exports.getPaymentHistoryByUser = function (req,res){
 	PlaceToPayTrn.find({user_id:req.params.user_id/*,trn_type:payments.getTrnTypes().SETTLE*/	}).exec(
 		function(err,objects){
 			if(!err){
-				var resArray =[];
-				for (var i=0; i<objects.length;i++){
-					var resPmnt=objects[i].p2p_response.split(",");
-					var resObject= {amount:resPmnt[9],date:objects[i].date_sent,status:objects[i].trn_type+" - "+payments.getStatusText(objects[i].status),reference:resPmnt[50],cus:resPmnt[4],p2p_response:objects[i].p2p_response};
-					resArray.push(resObject);
-				}
-				utils.log("Payments/PaymentHistoryByUser","Envio:",JSON.stringify(resArray));
-				res.json({status: true, response: resArray});
+				utils.log("Payments/PaymentHistoryByUser","Envio:",JSON.stringify(objects));
+				res.json({status: true, response: objects});
 			}else{
 				res.json({status: false, error: "Error obteniendo Historial de Pagos"});
 			}
