@@ -214,6 +214,7 @@ var DeliveryItemSchema= new mongoose.Schema({
 	signature_object: {type: Object, required:false},
 	insurance: {type: Boolean, required:false},
 	insurancevalue: {type: Number, required:false},
+    insurance_price: {type: Number, required:false},
 	instructions : {type: String, required:true},
 	priority: {type: Number, required:false},
 	deadline: {type: Date, required:false},
@@ -361,6 +362,7 @@ helper.createDeliveryItemHelper = function(req,res,trnId){
         signature_object: {status:false, signatureB64:''},
         insurance: req.body.insurance,
         insurancevalue: req.body.insurancevalue,
+        insurance_price: req.body.insurance_price,
         service_price : req.body.service_price,
         instructions : req.body.instructions,
         priority: req.body.priority,
@@ -501,7 +503,7 @@ helper.findDeliveryItemsWithPmntInfo=function(filter,req,res){
     if(req.params.sort){
         sort = utils.isJson(req.params.sort) ? JSON.parse(req.params.sort):req.params.sort;
     }
-    DeliveryItem.find({user_id:req.params.user_id, $or:[{overall_status:'requested'},{overall_status:'started'}]})
+    DeliveryItem.find(filter)
         .sort(sort.name)
         .skip(sort.skip)
         .limit(sort.limit || limitForSort)
