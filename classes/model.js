@@ -403,7 +403,7 @@ helper.createDeliveryItemHelper = function(req,res,trnId){
  *
  *
  * */
-helper.settlePaymentHelper=function(res,req,dlvrItem,callback){
+helper.settlePaymentHelper=function(res,req,dlvrItem){
     PlaceToPayTrn.findOne({_id:dlvrItem.trn_ids[0]},
         function (errFndP2PTrn,p2pTrn){
             if (!errFndP2PTrn){
@@ -420,7 +420,15 @@ helper.settlePaymentHelper=function(res,req,dlvrItem,callback){
                                             dlvrItem.trn_ids.push(trnObject._id);
                                             dlvrItem.save(
                                                 function(errSve,newDelItem){
-                                                    callback(errorPayment,resPmt);
+                                                    //callback(errorPayment+errSve,resPmt);
+                                                    if (!errUpdPmnt && resPmnt[0]===payments.getStatusList().APPROVED){
+                                                        res.json({
+                                                            status:true,
+                                                            message:"DeliveryItem ahora está" + object.status,
+                                                            response:result});
+                                                    }else{
+                                                        res.json({status: false, error: "Error Updating Payment "+errUpdPmnt});
+                                                    }
                                                 });
                                         });
                                 });
@@ -509,7 +517,7 @@ helper.findDeliveryItemsWithPmntInfo=function(filter,req,res){
         .limit(sort.limit || limitForSort)
         .populate({
             path: 'trn_ids',
-            match: { trn_type:payments.getTrnTypes().CAPTURE_ONLY}
+            match: { trn_type:payments.getTrnTypes().SETTLE}
         }).exec(function(err,objects){
             if(err){
                 res.json({status: false, error: "not found"});
@@ -1582,7 +1590,7 @@ exports.getDeliveryItemByID = function(req,res){
     filter={_id:req.params.delivery_id};
 	DeliveryItem.findOne({_id:req.params.delivery_id}).populate({
         path: 'trn_ids',
-        match: { trn_type:payments.getTrnTypes().CAPTURE_ONLY}
+        match: { trn_type:payments.getTrnTypes().SETTLE}
     }).exec(function(err,object){
 		if(!object){
 			res.json({status: false, error: "not found"});
@@ -2193,25 +2201,9 @@ exports.changeStatus = function(req,res){
 									{$inc:{"stats.finished_services":1}}, 
 									function(err, user){
 									if (object.payment_method===CONSTANTS.PMNT_METHODS.CREDIT){
-                                        helper.settlePaymentHelper(res,req,object,
-										function(errUpdPmnt,resPmnt){
-										//console.log("RESPMNT ",resPmnt);
-										if (!errUpdPmnt && resPmnt[0]===payments.getStatusList().APPROVED){
-											res.json({
-											status:true, 
-											message:"DeliveryItem ahora está" + object.status, 
-											response:result});
-										}else{
-											res.json({status: false, error: "Error Updating Payment "+errUpdPmnt});
-										}
-										});
-									}else{
-										res.json({
-										status:true, 
-										message:"DeliveryItem ahora está" + object.status, 
-										response:result
-										});
+                                        helper.settlePaymentHelper(res,req,object);
 									}
+                                    res.json({status:true,message:"DeliveryItem ahora está" + object.status,response:result});
    						});
 					});
 				}
@@ -2229,28 +2221,10 @@ exports.changeStatus = function(req,res){
 						Messenger.findOneAndUpdate({_id:req.body.messenger_info._id},
    									{$inc:{"stats.finished_services":1}}, 
    							function(err, user){
-   								if (object.payment_method===CONSTANTS.PMNT_METHODS.CREDIT){
-                                    helper.settlePaymentHelper(res,req,object,
-									function(errUpdPmnt,resPmnt){
-										//console.log("RESPMNT ",resPmnt);
-										if (!errUpdPmnt && resPmnt[0]===payments.getStatusList().APPROVED){
-											res.json({
-											status:true, 
-											message:"DeliveryItem ahora está" + object.status, 
-											response:result
-											});
-										}else{
-											res.json({status: false, error: "Error Updating Payment "+errUpdPmnt});
-										}
-									});
-								}else{
-									res.json({
-									status:true, 
-									message:"DeliveryItem ahora está" + object.status, 
-									response:result
-									});
-								}
-	   									
+   								if (object.payment_method===CONSTANTS.PMNT_METHODS.CREDIT) {
+                                    helper.settlePaymentHelper(res, req, object);
+                                }
+                                res.json({status:true,message:"DeliveryItem ahora está" + object.status,response:result});
    							});
 					});
 			   	}
@@ -2455,26 +2429,11 @@ exports.nextStatus = function(req,res){
 							Messenger.findOneAndUpdate({_id:req.body.messenger_info._id},{$inc:{"stats.finished_services":1}}, 
 	   						function(err, user){
 		   						if (object.payment_method===CONSTANTS.PMNT_METHODS.CREDIT){
-                                    helper.settlePaymentHelper(res,req,object,
-									function(errUpdPmnt,resPmnt){
-										//console.log("RESPMNT ",resPmnt);
-										if (!errUpdPmnt && resPmnt[0]===payments.getStatusList().APPROVED){
-											res.json({
-											status:true, 
-											message:"DeliveryItem ahora está" + object.status, 
-											response:result
-											});
-										}else{
-											res.json({status: false, error: "Error Updating Payment "+errUpdPmnt});
-										}
-									});
-									}else{
-										res.json({
-										status:true, 
-										message:"DeliveryItem ahora está" + object.status, 
-										response:result
-										});
-									}		
+                                    helper.settlePaymentHelper(res, req, object);
+									}
+                                res.json({  status:true,
+										    message:"DeliveryItem ahora está" + object.status,
+										    response:result});
 	   						});
 						});
 					}
