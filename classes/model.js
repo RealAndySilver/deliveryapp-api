@@ -371,8 +371,10 @@ helper.createDeliveryItemHelper = function(req,res,trnId){
         payment_method : req.body.payment_method,
         overall_status : CONSTANTS.OVERALLSTATUS.REQUESTED,
         status : CONSTANTS.STATUS.SYSTEM.AVAILABLE,
-        time_to_pickup : req.body.time_to_pickup,
-        time_to_deliver: req.body.time_to_deliver,
+        //time_to_pickup : req.body.time_to_pickup,
+        //time_to_deliver: req.body.time_to_deliver,
+		time_to_pickup : 'now',
+		time_to_deliver: 'now',
         rated : false,
         images : [],
         trn_ids : [],
@@ -1549,7 +1551,7 @@ utils.log("Delivery","Recibo:",JSON.stringify(req.body));
 					PaymentToken.findOne({_id:req.body.token_id},
 					function(errPmtTkn,pmntToken){
 						if (!errPmtTkn){
-							payments.capturePaymentUsingToken(pmntToken.token,req.body.ip_address,'123456',req.body.price_to_pay,user,
+							payments.capturePaymentUsingToken(pmntToken.token,req.body.ip_address,payments.generateRandomInvoiceNumber(),req.body.price_to_pay,user,
 							function(errorCreatePmnt,resPmt){
 								if (!errorCreatePmnt){
 									//console.log("RES ",resPmt);
