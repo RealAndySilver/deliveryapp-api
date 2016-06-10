@@ -39,12 +39,14 @@ mongoose.connect("mongodb://vueltap:vueltap123@ds015909.mlab.com:15909/vueltap")
 
 //Producción
 //var hostname = "https://vueltap.com:8080";
-//var webapp = "https://vueltap.com"
-//var webRootFolder = "/vueltap/"
+//var webapp = "https://vueltap.com";
+//var webRootFolder = "/vueltap/";
+//var administratorEmail = "camilo@vueltap.com"
 //Dev
 var hostname = "http://192.241.187.135:2000";
-var webapp = "http://192.185.136.242"
-var webRootFolder = "/~julian/vueltap/"
+var webapp = "http://192.185.136.242";
+var webRootFolder = "/~julian/vueltap/";
+var administratorEmail = "julian.montana@gmail.com";
 
 var exclude = {/*password:*/};
 var verifyEmailVar = true;
@@ -402,7 +404,7 @@ helper.createDeliveryItemHelper = function(req,res,trnId){
 
 
 /**
- *
+ *Esta fu
  *
  * */
 helper.settlePaymentHelper=function(res,req,dlvrItem){
@@ -416,6 +418,15 @@ helper.settlePaymentHelper=function(res,req,dlvrItem){
                             payments.settleTransaction(p2pTrn.p2p_trn_id,p2pTrn.ip_address,pmntTkn.franchise,
                                 function(errorPayment, body){
                                     var resPmt=body.split(',');
+									if (errorPayment || resPmnt[0]!=payments.getStatusList().APPROVED){
+										User.findOne({_id:dlvrItem.user_id},
+											function(errFndUser,user){
+												mail.send("Error Procesando Pago", mail_template.payment_rejected_email(user,dlvrItem), data.email);
+												mail.send("Error Procesando Pago", mail_template.payment_rejected_email(user,dlvrItem), administratorEmail);
+												user.email_confirmation=false;
+												user.save(function(errSve,newUser){});
+											});
+									}
                                     var p2pTrnObject=helper.populatePlacetoPayTrnFromP2PResponse(p2pTrn.user_id,p2pTrn.ip_address,resPmt);
                                     p2pTrnObject.save(
                                         function(errCreateTrn,trnObject){
@@ -423,24 +434,24 @@ helper.settlePaymentHelper=function(res,req,dlvrItem){
                                             dlvrItem.save(
                                                 function(errSve,newDelItem){
                                                     //callback(errorPayment+errSve,resPmt);
-                                                    if (!errUpdPmnt && resPmnt[0]===payments.getStatusList().APPROVED){
+                                                    /*if (!errUpdPmnt && resPmnt[0]===payments.getStatusList().APPROVED){
                                                         res.json({
                                                             status:true,
                                                             message:"DeliveryItem ahora está" + object.status,
                                                             response:result});
                                                     }else{
                                                         res.json({status: false, error: "Error Updating Payment "+errUpdPmnt});
-                                                    }
+                                                    }*/
                                                 });
                                         });
                                 });
                         }else{
-                            res.json({status: false, error: "Error Procesando Pago "+errFndPmntTkn});
+                            //res.json({status: false, error: "Error Procesando Pago "+errFndPmntTkn});
                         }
 
                     });
             }else{
-                res.json({status: false, error: "Error Procesando Pago"+errFndP2PTrn});
+                //res.json({status: false, error: "Error Procesando Pago"+errFndP2PTrn});
             }
         });
 };
