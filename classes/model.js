@@ -26,9 +26,9 @@ var imageUtilities = require('../classes/uploader');
 //MongoDB Connection /////////////
 //////////////////////////////////
 //test Iam studio
-//mongoose.connect("mongodb://vueltap:vueltap123@ds015909.mlab.com:15909/vueltap");
+mongoose.connect("mongodb://vueltap:vueltap123@ds015909.mlab.com:15909/vueltap");
 //Test Vueltap
-mongoose.connect("mongodb://iAmUser:iAmStudio1@ds015942.mlab.com:15942/vueltap-dev");
+//mongoose.connect("mongodb://iAmUser:iAmStudio1@ds015942.mlab.com:15942/vueltap-dev");
 //////////////////////////////////
 //End of MongoDB Connection///////
 //////////////////////////////////
@@ -38,13 +38,13 @@ mongoose.connect("mongodb://iAmUser:iAmStudio1@ds015942.mlab.com:15942/vueltap-d
 //////////////////////////////////
 
 //Producción
-var hostname = "https://vueltap.com:8080";
-var webapp = "https://vueltap.com"
-var webRootFolder = "/vueltap/"
+//var hostname = "https://vueltap.com:8080";
+//var webapp = "https://vueltap.com"
+//var webRootFolder = "/vueltap/"
 //Dev
-//var hostname = "http://192.241.187.135:2000";
-//var webapp = "http://192.185.136.242"
-//var webRootFolder = "/~julian/vueltap/"
+var hostname = "http://192.241.187.135:2000";
+var webapp = "http://192.185.136.242"
+var webRootFolder = "/~julian/vueltap/"
 
 var exclude = {/*password:*/};
 var verifyEmailVar = true;
