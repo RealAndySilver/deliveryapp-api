@@ -26,9 +26,9 @@ var imageUtilities = require('../classes/uploader');
 //MongoDB Connection /////////////
 //////////////////////////////////
 //test Iam studio
-mongoose.connect("mongodb://vueltap:vueltap123@ds015909.mlab.com:15909/vueltap");
+//mongoose.connect("mongodb://vueltap:vueltap123@ds015909.mlab.com:15909/vueltap");
 //Test Vueltap
-//mongoose.connect("mongodb://iAmUser:iAmStudio1@ds015942.mlab.com:15942/vueltap-dev");
+mongoose.connect("mongodb://iAmUser:iAmStudio1@ds015942.mlab.com:15942/vueltap-dev");
 //////////////////////////////////
 //End of MongoDB Connection///////
 //////////////////////////////////
@@ -38,13 +38,13 @@ mongoose.connect("mongodb://vueltap:vueltap123@ds015909.mlab.com:15909/vueltap")
 //////////////////////////////////
 
 //Producción
-//var hostname = "vueltap.com:8080";
-//var webapp = "https://vueltap.com"
-//var webRootFolder = "/vueltap/"
+var hostname = "https://vueltap.com:8080";
+var webapp = "https://vueltap.com"
+var webRootFolder = "/vueltap/"
 //Dev
-var hostname = "192.241.187.135:2000";
-var webapp = "http://192.185.136.242"
-var webRootFolder = "/~julian/vueltap/"
+//var hostname = "http://192.241.187.135:2000";
+//var webapp = "http://192.185.136.242"
+//var webRootFolder = "/~julian/vueltap/"
 
 var exclude = {/*password:*/};
 var verifyEmailVar = true;
@@ -834,7 +834,9 @@ exports.authenticateUser = function(req,res){
 		}
 	});
 };
-//Read All*
+/**
+ * This services returns a list of the users using pagination, this is used from the Admin Console
+ * */
 exports.getAllUsers = function(req,res){
 	//Esta función expone un servicio para buscar todos los usuarios sin ningún criterio de búsqueda
 	var sort = {};
@@ -851,10 +853,14 @@ exports.getAllUsers = function(req,res){
 			res.json({status: false, error: "not found"});
 		}
 		else{
-			res.json({status: true, response: objects});
+			User.count({}, function(err, count) {
+				res.json({status: true, response: objects, total:count});
+			});
 		}
 	});
 };
+
+
 //User Deliveries Read*
 exports.requestedDeliveries = function(req,res){
 	//Esta función expone un servicio para buscar los deliveries que el usuario haya iniciado, pero
@@ -955,7 +961,7 @@ exports.requestRecoverUser = function(req,res){
 				}
 				else{
 					if(result){
-						var url = 'http://'+hostname+'/api_1.0/Password/Redirect/user/'+object.email+'/new_password/'+tokenB64;
+						var url = hostname+'/api_1.0/Password/Redirect/user/'+object.email+'/new_password/'+tokenB64;
 						mail.send("Recuperar Contraseña", 
 									"Hola "+object.name+". <br>Ingresa a este link para recuperar tu contraseña:<br> <a href='"+url+"'> Recuperar </a>",object.email);
 						res.json({status: true, response: {token:tokenB64}});
@@ -983,7 +989,7 @@ exports.newPasswordUser = function(req,res){
 				else{
 					if(result){
 						//mail.send("Clave Cambiada Con Exito");
-						mail.send("Clave Cambiada Con Exito!", "Hola "+object.name+". <br>Tu contraseña ha sido cambiada con éxito. Ingresa ya a Mensajería:<br> <a href='http://mensajeria.com'> Mensajería </a>", object.email);
+						mail.send("Clave Cambiada Con Exito!", "Hola "+object.name+". <br>Tu contraseña ha sido cambiada con éxito. Ingresa ya a Vueltap:<br> <a href='"+webapp+webRootFolder+"'> Vueltap </a>", object.email);
 						res.json({status: true, response: result});
 					}
 				}
@@ -1327,7 +1333,11 @@ exports.authenticateMessenger = function(req,res){
 		}
 	});
 };
-//Read All*
+/**
+ * Retrieves a non filtered query over the Messengers collection
+ * this is a paginated service
+ *
+ * */
 exports.getAllMessengers = function(req,res){
 	//Esta función expone un servicio para buscar todos los mensajeros sin ningún criterio de búsqueda
 	//Pendiente filtrado y límite
@@ -1345,7 +1355,9 @@ exports.getAllMessengers = function(req,res){
 			res.json({status: false, error: "not found"});
 		}
 		else{
-			res.json({status: true, response: objects});
+			Messenger.count({}, function(err, count) {
+				res.json({status: true, response: objects, total:count});
+			});
 		}
 	});
 };
@@ -1415,7 +1427,7 @@ exports.requestRecoverMessenger = function(req,res){
 				}
 				else{
 					if(result){
-						var url = 'http://'+hostname+'/api_1.0/Password/Redirect/messenger/'+object.email+'/new_password/'+tokenB64;
+						var url = hostname+'/api_1.0/Password/Redirect/messenger/'+object.email+'/new_password/'+tokenB64;
 						mail.send("Recuperar Contraseña", 
 									"Hola "+object.name+". <br>Ingresa a este link para recuperar tu contraseña:<br> <a href='"+url+"'> Recuperar </a>",object.email);
 						res.json({status: true, response: {token:tokenB64}});
@@ -1443,7 +1455,7 @@ exports.newPasswordMessenger = function(req,res){
 				else{
 					if(result){
 						//mail.send("Clave Cambiada Con Exito");
-						mail.send("Clave Cambiada Con Exito!", "Hola "+object.name+". <br>Tu contraseña ha sido cambiada con éxito. Ingresa ya a Mensajería:<br> <a href='http://mensajeria.com'> Mensajería </a>", object.email);
+						mail.send("Clave Cambiada Con Exito!", "Hola "+object.name+". <br>Tu contraseña ha sido cambiada con éxito. Ingresa ya a Vueltap:<br> <a href='"+webapp+webRootFolder+"'> Vueltap </a>", object.email);
 						res.json({status: true, response: result});
 					}
 				}
@@ -1640,7 +1652,9 @@ exports.getAllDeliveryItemsByStatus = function(req,res){
 			res.json({status: false, error: "not found"});
 		}
 		else{
-			res.json({status: true, response: objects});
+			DeliveryItem.count({status:req.params.status}, function(err, count) {
+				res.json({status: true, response: objects, total:count});
+			});
 		}
 	});
 };
@@ -3215,7 +3229,7 @@ var emailVerification = function (req,data,type){
 	//Tomamos el correo sin encriptar y lo encodeamos en base 64
 	var emailB64 = security.base64(data.email);
 	//Formamos una url decifrable únicamente por nuestro sistema para poder verificar la autenticidad
-	var url = 'http://'+hostname+'/api_1.0/Account/Verify/'+type+'/'+emailB64+'/'+tokenB64;
+	var url = hostname+'/api_1.0/Account/Verify/'+type+'/'+emailB64+'/'+tokenB64;
 				mail.send("Verifica tu cuenta", mail_template.email_verification(data,url), data.email);
 };
 //Price Calculator
@@ -3607,7 +3621,7 @@ exports.passwordRedirect = function (req, res){
 	
 	if (/like Mac OS X/.test(ua)) {
 		console.log("Caso MACOSX");
-		res.redirect(webapp+'/#/NewPassword/'+req.params.token+'/'+req.params.type+'/'+req.params.request+'/'+req.params.email);
+		res.redirect(webapp+webRootFolder+'#/recoverpassfromurl/'+req.params.token+'/'+req.params.type+'/'+req.params.request+'/'+req.params.email);
 		return;
 	}
 	
@@ -3623,7 +3637,7 @@ exports.passwordRedirect = function (req, res){
 	
 	if (/(Intel|PPC) Mac OS X/.test(ua)){
 		console.log("Caso INTEL PPC MAC");
-		res.redirect(webapp+'/#/NewPassword/'+req.params.token+'/'+req.params.type+'/'+req.params.request+'/'+req.params.email);
+		res.redirect(webapp+webRootFolder+'#/recoverpassfromurl/'+req.params.token+'/'+req.params.type+'/'+req.params.request+'/'+req.params.email);
 		return;
 	}
 	
