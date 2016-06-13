@@ -30,8 +30,8 @@ exports.email_verification = function(object,url) {
 }
 
 exports.payment_rejected_email = function(user,dlvrItem) {
-	var result = "Hola "+user.name+"!. <br>Se presento un error procesado el pago de tu servicio"+
-		dlvrItem.item_name+"por valor de "+dlvrItem.price_to_pay+
+	var result = "Hola "+user.name+"!. <br>Se presento un error procesado el pago de tu servicio "+
+		dlvrItem.item_name+" por valor de "+dlvrItem.price_to_pay+
 		"<br>Tu cuenta ha sido desactivada <br>Saludos! La App de Vueltap :).";
 	return result;
 }

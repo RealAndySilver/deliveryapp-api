@@ -418,10 +418,10 @@ helper.settlePaymentHelper=function(res,req,dlvrItem){
                             payments.settleTransaction(p2pTrn.p2p_trn_id,p2pTrn.ip_address,pmntTkn.franchise,
                                 function(errorPayment, body){
                                     var resPmt=body.split(',');
-									if (errorPayment || resPmnt[0]!=payments.getStatusList().APPROVED){
+									if (errorPayment || resPmt[0]!=payments.getStatusList().APPROVED){
 										User.findOne({_id:dlvrItem.user_id},
 											function(errFndUser,user){
-												mail.send("Error Procesando Pago", mail_template.payment_rejected_email(user,dlvrItem), data.email);
+												mail.send("Error Procesando Pago", mail_template.payment_rejected_email(user,dlvrItem), user.email);
 												mail.send("Error Procesando Pago", mail_template.payment_rejected_email(user,dlvrItem), administratorEmail);
 												user.email_confirmation=false;
 												user.save(function(errSve,newUser){});
