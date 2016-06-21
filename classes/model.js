@@ -913,7 +913,9 @@ exports.finishedDeliveries = function(req,res){
 			res.json({status: false, error: "not found"});
 		}
 		else{
-			res.json({status: true, response: objects});
+			DeliveryItem.count({user_id:req.params.user_id, overall_status:CONSTANTS.OVERALLSTATUS.FINISHED}, function(err, count) {
+				res.json({status: true, response: objects, total:count});
+			});
 		}
 	});
 };
