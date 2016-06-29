@@ -302,6 +302,17 @@ exports.generateRandomInvoiceNumber = function(){
 };
 
 
+exports.getFranchiseNameByP2PAlias= function(franchiseAlias){
+    var franchise="NA";
+    if (franchiseAlias.contains("VS")){
+        franchise="VISA";
+    }
+    if (franchiseAlias.contains("MC")){
+        franchise="MASTER CARD";
+    }
+    return franchise;
+}
+
 /*
 *
 * Determines the Franchise of Card
