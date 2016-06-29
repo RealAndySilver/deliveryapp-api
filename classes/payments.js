@@ -304,10 +304,10 @@ exports.generateRandomInvoiceNumber = function(){
 
 exports.getFranchiseNameByP2PAlias= function(franchiseAlias){
     var franchise="NA";
-    if (franchiseAlias.contains("VS")){
+    if (franchiseAlias.indexOf("VS")!=-1){
         franchise="VISA";
     }
-    if (franchiseAlias.contains("MC")){
+    if (franchiseAlias.indexOf("MC")!=-1){
         franchise="MASTER CARD";
     }
     return franchise;
