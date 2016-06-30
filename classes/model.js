@@ -293,6 +293,12 @@ var PaymentTokenSchema= new mongoose.Schema({
 	franchise: {type: String, required: true,unique: false,},
 	date_created : {type: Date},
 	valid_until : {type: Date},
+	card_holder_first_name :String,
+	card_holder_last_name :String,
+	card_holder_address: String,
+	card_holder_city: String,
+	card_holder_doc_type: String,
+	card_holder_doc_number: String,
 }),
 	PaymentToken= mongoose.model('PaymentToken',PaymentTokenSchema);
 //////////////////////////////////
@@ -1584,7 +1590,7 @@ utils.log("Delivery","Recibo:",JSON.stringify(req.body));
 					PaymentToken.findOne({_id:req.body.token_id},
 					function(errPmtTkn,pmntToken){
 						if (!errPmtTkn){
-							payments.capturePaymentUsingToken(pmntToken.token,req.body.ip_address,payments.generateRandomInvoiceNumber(),req.body.price_to_pay,user,
+							payments.capturePaymentUsingToken(pmntToken,req.body.ip_address,payments.generateRandomInvoiceNumber(),req.body.price_to_pay,user,
 							function(errorCreatePmnt,resPmt){
 								if (!errorCreatePmnt){
 									//console.log("RES ",resPmt);
@@ -3544,6 +3550,12 @@ exports.createPaymentMethod = function(req,res){
 					franchise : result.tokenizeCardResult.franchise,
 					date_created: new Date(),
 					valid_until: result.tokenizeCardResult.validUntil,
+					card_holder_first_name :req.body.card_holder_first_name,
+					card_holder_last_name :req.body.card_holder_last_name,
+					card_holder_address: req.body.card_holder_address,
+					card_holder_city: req.body.card_holder_city,
+					card_holder_doc_type: req.body.card_holder_doc_type,
+					card_holder_doc_number: req.body.card_holder_doc_number,
 					}).save(function(err3,object){
 						if(err3){
 							res.json({status: false, message: "Error al registrar el metodo de pago "+err3 , err: err3});

@@ -57,10 +57,10 @@ var createAuthObject=function(){
                         additional:[]};
 }
 
-/*
+/**
 * Prepares the object to be send to the capture
 * */
-var createFormDataCaptOnly=function(token,customerIP,invoiceNum,amount,customer){
+var createFormDataCaptOnly=function(pmntTkn,customerIP,invoiceNum,amount,customer){
 
     return {x_version: '2.0',
             x_delim_data: 'TRUE',
@@ -75,28 +75,21 @@ var createFormDataCaptOnly=function(token,customerIP,invoiceNum,amount,customer)
             x_amount: amount,
             x_tax: '0',
             x_amount_base: '0',
-            x_token: token,
+            x_token: pmntTkn.token,
             //x_card_type: 'C',
             //cx_card_code: '123',
             x_differed: '1',
-            x_cust_id: customer._id+'',
-            x_first_name: customer.name+'',
+            x_cust_id: pmntTkn.card_holder_doc_type+' '+pmntTkn.card_holder_doc_number,
+            x_first_name: pmntTkn.card_holder_first_name+'',
+            x_last_name: pmntTkn.card_holder_last_name+'',
             x_currency_code: 'COP',
-            /*'x_additional_data[Destino]': '0',
-            'x_additional_data[Ruta]': '0',
-            'x_additional_data[Origen]': '0',
-            'x_additional_data[Fecha de Salida]': '0',
-            'x_additional_data[Fecha de Regreso]': '0',
-            'x_additional_data[Escalas]': '0',
-            'x_additional_data[Clase de Tarifa]': '0',
-            'x_additional_data[Tipo de Ruta]': '0',
-            'x_additional_data[Cabina]': '0',
-            'x_additional_data[Promocional]': '0',
-            'x_additional_data[# de Viajero Frecuente]': '0',
-            'x_additional_data[Hora de Salida]': '0' */}   
+            x_email:customer.email,
+            x_mobile:customer.mobilephone,
+            x_city:pmntTkn.card_holder_city,
+            x_address:pmntTkn.card_holder_address,}
 };
 
-/*
+/**
  * Prepares the object to be send to the settle transaction
  *
  * */
@@ -114,7 +107,7 @@ var createFormDataSettle=function(trnId,customerIP,franchise){
     };
 };
 
-/*
+/**
  * Prepares the object to be send to the void transaction
  *
  * */
@@ -132,8 +125,8 @@ var createFormDataVoid=function(trnId,customerIP,franchise){
     };
 };
 
-/*
-Function that connects with Place 2 Pay in order to obtain a new token
+/**
+*Function that connects with Place 2 Pay in order to obtain a new token
 */
 exports.createToken = function(user,card_number,cvv,exp_date,callback){
     if (client){
@@ -169,10 +162,9 @@ exports.createToken = function(user,card_number,cvv,exp_date,callback){
     }
 };
 
-/*
-
-Function that connects with Place 2 Pay in order to remove an existing token
-
+/**
+*Function that connects with Place 2 Pay in order to remove an existing token
+*
 */
 exports.deleteToken = function(token,callback){				
     if (client){
@@ -187,8 +179,8 @@ exports.deleteToken = function(token,callback){
     }
 };
 
-/*
-    Function that settle a previously CAPTURE trn using the capturePaymentUsingToken
+/**
+ * Function that settle a previously CAPTURE trn using the capturePaymentUsingToken
 */
 exports.settleTransaction = function(trnId,customerIP,franchise,callback){
     var formData=createFormDataSettle(trnId,customerIP,franchise);
@@ -208,8 +200,8 @@ exports.settleTransaction = function(trnId,customerIP,franchise,callback){
     });
 };
 
-/*
-    Function that voids a previously CAPTURE trn using the capturePaymentUsingToken
+/**
+*    Function that voids a previously CAPTURE trn using the capturePaymentUsingToken
 */
 exports.voidTransaction = function(trnId,customerIP,franchise,callback){
     var formData=createFormDataVoid(trnId,customerIP,franchise);
@@ -230,13 +222,12 @@ exports.voidTransaction = function(trnId,customerIP,franchise,callback){
 };
 
 
-/*
-Fucntion that connects with P2P for making an CAPTURE_ONLY charge to the credit card associated
-to a token
+/**
+ * Fucntion that connects with P2P for making an CAPTURE_ONLY charge to the credit card associated to a token
 */
-exports.capturePaymentUsingToken=function(token,customerIP,invoiceNum,amount,customer,callback){
-    var formData=createFormDataCaptOnly(token,customerIP,invoiceNum,amount,customer);
-    //console.log("Data to send ",formData);    
+exports.capturePaymentUsingToken=function(pmntTkn,customerIP,invoiceNum,amount,customer,callback){
+    var formData=createFormDataCaptOnly(pmntTkn,customerIP,invoiceNum,amount,customer);
+    console.log("Data to send ",formData);
     var options = { method: 'POST',
         url: CONSTANTS.P2P_PARAMS.P2P_URL_FORM,
         headers: 
@@ -251,7 +242,7 @@ exports.capturePaymentUsingToken=function(token,customerIP,invoiceNum,amount,cus
     });
 };
 
-/*
+/**
 * Returns the list of possible values for the P2P response
 *
 * */
@@ -259,7 +250,7 @@ exports.getStatusList=function(){
     return CONSTANTS.STATUS;
 };
 
-/*
+/**
  * Returns the list of possible values for the P2P response
  *
  * */
@@ -267,7 +258,7 @@ exports.getTrnTypes=function(){
     return CONSTANTS.P2P_PARAMS.TRN_TYPES;
 };
 
-/*
+/**
 * Resolves the status name according to a value
 *
 * */
@@ -301,7 +292,9 @@ exports.generateRandomInvoiceNumber = function(){
     return text;
 };
 
-
+/**
+ * Return actual franchise name by transalating the franchise alias sent by P2P
+ * */
 exports.getFranchiseNameByP2PAlias= function(franchiseAlias){
     var franchise="NA";
     if (franchiseAlias.indexOf("VS")!=-1){
@@ -313,7 +306,7 @@ exports.getFranchiseNameByP2PAlias= function(franchiseAlias){
     return franchise;
 }
 
-/*
+/**
 *
 * Determines the Franchise of Card
 * */
