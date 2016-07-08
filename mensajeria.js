@@ -167,6 +167,7 @@ app.get('/api_1.0/DeliveryItem/UserAborted/:user_id/:sort?', model.getUserAborte
 app.get('/api_1.0/DeliveryItems/Near/:lat/:lon/:maxDistance/:messenger_id/:sort?', model.getNearDeliveryItems);
 app.get('/api_1.0/DeliveryItems/:sort?', model.getAllDeliveryItems);
 app.get('/api_1.0/DeliveryItems/Status/:status/:sort?', model.getAllDeliveryItemsByStatus);
+app.get('/api_1.0/DeliveryItems/Messenger/LastWeek/:messenger_id', model.getLastWeekDeliveryItemsByMessenger);
 app.get('/api_1.0/DeliveryItems/OverallStatus/:overall_status/:messenger_id/:sort?', model.getByOverallStatus);
 app.get('/api_1.0/Count/DeliveryItems/:status?', model.getCountWithStatus);
 

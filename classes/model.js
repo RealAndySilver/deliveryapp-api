@@ -571,6 +571,30 @@ helper.populatePlacetoPayTrnFromP2PResponse=function(p_user_id,p_ip_address,p2pR
         status_text:payments.getStatusText(p2pResArray[0])});
 };
 
+
+/**
+ * Taking currentdate as base it returns as startDate the monday for the previous week and as
+ * end date the sunday for the previousweek
+ */
+helper.getFilterDatesForLastWeekReport=function(){
+	var currentMonday = new Date();
+	var day = currentMonday.getDay() || 7; // Get current day number, converting Sun. to 7
+	if( day !== 1 )                // Only manipulate the date if it isn't Mon.
+		currentMonday.setHours(-24 * (day - 1));
+
+	var previousSunday=new Date(currentMonday);
+	previousSunday.setDate(currentMonday.getDate()-1);
+	previousSunday.setHours(23,59,59,999);
+
+	var previousMonday=new Date(currentMonday);
+	previousMonday.setDate(currentMonday.getDate()-7);
+	previousMonday.setHours(00,00,00,000);
+
+	var filter={startDate:previousMonday,endDate:previousSunday};
+
+	return filter;
+};
+
 /////////////////////////////////////
 
 
@@ -1662,6 +1686,35 @@ exports.getAllDeliveryItems = function(req,res){
 		}
 	});
 };
+
+
+/**
+ * JDMC: This service searches all the Delivery Items associated to the messenger send as param in messenger_id
+ * This filter all the services that where created the previos week of the current date. For example if today date
+ * is 2016/07/21 it will retunr all the services created between 2016/07/11 and 2016/07/17
+ *
+ * */
+exports.getLastWeekDeliveryItemsByMessenger = function(req,res){
+	var sort = {};
+	var filters=helper.getFilterDatesForLastWeekReport();
+	if(req.params.sort){
+		sort = utils.isJson(req.params.sort) ? JSON.parse(req.params.sort):req.params.sort;
+	}
+	DeliveryItem.find({messenger_id:req.params.messenger_id,date_created:{$gte:filters.startDate, $lte:filters.endDate}})
+		.sort(sort.name)
+		.skip(sort.skip)
+		.limit(sort.limit || limitForSort)
+		.exec(function(err,objects){
+			if(err){
+				res.json({status: false, error: "not found"});
+			}
+			else{
+				var obj_response={filters:filters,items:objects};
+				res.json({status: true, response: obj_response});
+			}
+		});
+};
+
 //Read Many
 exports.getAllDeliveryItemsByStatus = function(req,res){
 	//Esta función expone un servicio para buscar todos los DeliveryItems sin ningún criterio de búsqueda
