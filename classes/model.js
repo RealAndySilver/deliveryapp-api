@@ -143,6 +143,7 @@ var UserSchema= new mongoose.Schema({
 	password : {type: String, required:true},
 	password_recover : {status: {type: Boolean}, token:{type:String}},
 	email_confirmation : {type: Boolean, required:true},
+	active : {type: Boolean, required:true},
 	name : {type: String, required:true},
 	lastname : {type: String, required:true},
 	mobilephone: {type: Number, required: true},
@@ -433,7 +434,7 @@ helper.settlePaymentHelper=function(res,req,dlvrItem){
 											function(errFndUser,user){
 												mail.send("Error Procesando Pago", mail_template.payment_rejected_email(user,dlvrItem), user.email);
 												mail.send("Error Procesando Pago", mail_template.payment_rejected_email(user,dlvrItem), administratorEmail);
-												user.email_confirmation=false;
+												user.active=false;
 												user.save(function(errSve,newUser){});
 											});
 									}
@@ -767,6 +768,7 @@ exports.createUser = function(req,res){
 		email_confirmation : verifyEmailVar,
 		//////////////////////////////////////
 		//////////////////////////////////////
+		active:true,
 		password : req.body.password,
 		name : req.body.name,
 		lastname : req.body.lastname,
@@ -1650,45 +1652,50 @@ utils.log("Delivery","Recibo:",JSON.stringify(req.body));
 	}
     
 	//New Implementacion
-	if (req.body.payment_method === CONSTANTS.PMNT_METHODS.CREDIT){
+	
 		User.findOne({_id:req.body.user_id},
 			function(errFndUsr,user){
 				if (!errFndUsr){
-					PaymentToken.findOne({_id:req.body.token_id},
-					function(errPmtTkn,pmntToken){
-						if (!errPmtTkn){
-							payments.capturePaymentUsingToken(pmntToken,req.body.ip_address,payments.generateRandomInvoiceNumber(),req.body.price_to_pay,user,
-							function(errorCreatePmnt,resPmt){
-								if (!errorCreatePmnt){
-									//console.log("RES ",resPmt);
-                                    var p2pTrnObject=helper.populatePlacetoPayTrnFromP2PResponse(req.body.user_id,req.body.ip_address,resPmt);
-                                    p2pTrnObject.save(
-									function(errCreateTrn,trnObject){
-										if (!errCreateTrn){
-											if (trnObject.status==payments.getStatusList().PENDING){
-												helper.createDeliveryItemHelper(req,res,trnObject._id);
-											}else{
-												res.json({status: false, message: "Error Procesando el pago. "+resPmt[3], response: "Transaccion rechazada en Place to Pay"});
-											}
+					if (!user.active){
+						res.json({status: false, message: "No puedes solicitar servicios, tienes pagos pendientes."});
+						return;
+					}
+					if (req.body.payment_method === CONSTANTS.PMNT_METHODS.CREDIT){
+						PaymentToken.findOne({_id:req.body.token_id},
+							function(errPmtTkn,pmntToken){
+								if (!errPmtTkn){
+									payments.capturePaymentUsingToken(pmntToken,req.body.ip_address,payments.generateRandomInvoiceNumber(),req.body.price_to_pay,user,
+									function(errorCreatePmnt,resPmt){
+										if (!errorCreatePmnt){
+											//console.log("RES ",resPmt);
+											var p2pTrnObject=helper.populatePlacetoPayTrnFromP2PResponse(req.body.user_id,req.body.ip_address,resPmt);
+											p2pTrnObject.save(
+											function(errCreateTrn,trnObject){
+												if (!errCreateTrn){
+													if (trnObject.status==payments.getStatusList().PENDING){
+														helper.createDeliveryItemHelper(req,res,trnObject._id);
+													}else{
+														res.json({status: false, message: "Error Procesando el pago. "+resPmt[3], response: "Transaccion rechazada en Place to Pay"});
+													}
+												}else{
+													res.json({status: false, message: "Error creando pedido.", response: errCreateTrn});
+												}
+											});
 										}else{
-											res.json({status: false, message: "Error creando pedido.", response: errCreateTrn});
+											res.json({status: false, message: "Error creando pedido.", response: errorCreatePmnt});
 										}
 									});
 								}else{
-									res.json({status: false, message: "Error creando pedido.", response: errorCreatePmnt});
+									res.json({status: false, message: "Error creando pedido.", response: errPmtTkn});
 								}
 							});
-						}else{
-							res.json({status: false, message: "Error creando pedido.", response: errPmtTkn});
-						}
-					});
 				}else{
-					res.json({status: false, message: "Error creando pedido.", response: errFndUsr});
+					helper.createDeliveryItemHelper(req,res,null);
 				}
+			}else{
+				res.json({status: false, message: "No se encontro usuario.", response: errFndUsr});
+			}
 		});
-	}else{
-		helper.createDeliveryItemHelper(req,res,null);
-	}
 };
 
 
