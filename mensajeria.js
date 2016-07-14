@@ -168,6 +168,7 @@ app.get('/api_1.0/DeliveryItems/Near/:lat/:lon/:maxDistance/:messenger_id/:sort?
 app.get('/api_1.0/DeliveryItems/:sort?', model.getAllDeliveryItems);
 app.get('/api_1.0/DeliveryItems/Status/:status/:sort?', model.getAllDeliveryItemsByStatus);
 app.get('/api_1.0/DeliveryItems/Messenger/LastWeek/:messenger_id', model.getLastWeekDeliveryItemsByMessenger);
+app.get('/api_1.0/DeliveryItems/User/LastFortnight/:user_id', model.getLastFortnightDeliveryItemsByUser);
 app.get('/api_1.0/DeliveryItems/OverallStatus/:overall_status/:messenger_id/:sort?', model.getByOverallStatus);
 app.get('/api_1.0/Count/DeliveryItems/:status?', model.getCountWithStatus);
 

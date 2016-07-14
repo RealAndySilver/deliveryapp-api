@@ -595,6 +595,46 @@ helper.getFilterDatesForLastWeekReport=function(){
 	return filter;
 };
 
+/**
+ * Taking currentdate as base it returns as
+ * startDate the firstday  for the previous fortnight and as
+ * end date the
+ */
+helper.getFilterDatesForLastFortnight=function(){
+	var currentDate = new Date();
+	var date = currentDate.getDate();
+	var startDate=new Date(currentDate);
+	var endDate=new Date(currentDate);
+	if (date>15){
+		startDate.setDate(1);
+		endDate.setDate(15);
+	}else{
+		var newMonth=currentDate.getMonth()-1;
+		//We control that if it's january we need to move to the
+		//previous year
+		if (newMonth==-1){
+			startDate.setFullYear(currentDate.getFullYear()-1);
+			endDate.setFullYear(currentDate.getFullYear()-1);
+
+			startDate.setMonth(11);
+			endDate.setMonth(11);
+
+			startDate.setDate(15);
+			endDate.setDate(31);
+		}else{
+			startDate.setMonth(newMonth);
+			startDate.setDate(15);
+			endDate.setDate(0);
+		}
+	}
+	startDate.setHours(00,00,00,000);
+	endDate.setHours(23,59,59,999);
+
+	var filter={startDate:startDate,endDate:endDate};
+
+	return filter;
+};
+
 /////////////////////////////////////
 
 
@@ -1703,7 +1743,35 @@ exports.getLastWeekDeliveryItemsByMessenger = function(req,res){
 	if(req.params.sort){
 		sort = utils.isJson(req.params.sort) ? JSON.parse(req.params.sort):req.params.sort;
 	}
-	DeliveryItem.find({messenger_id:req.params.messenger_id,date_created:{$gte:filters.startDate, $lte:filters.endDate}})
+	DeliveryItem.find({messenger_id:req.params.messenger_id,date_created:{$gte:filters.startDate, $lte:filters.endDate},overall_status:CONSTANTS.OVERALLSTATUS.FINISHED})
+		.sort(sort.name)
+		.skip(sort.skip)
+		.limit(sort.limit || limitForSort)
+		.exec(function(err,objects){
+			if(err){
+				res.json({status: false, error: "not found"});
+			}
+			else{
+				var obj_response={filters:filters,items:objects};
+				res.json({status: true, response: obj_response});
+			}
+		});
+};
+
+/**
+ * JDMC: This service searches all the Delivery Items associated to the user send as param in user_id
+ * This filter all the services that where created the last fortnight of the current date.
+ * For example if today date is 2016/07/21 it will return all the services created
+ * between 2016/07/01 and 2016/07/15
+ *
+ * */
+exports.getLastFortnightDeliveryItemsByUser = function(req,res){
+	var sort = {};
+	var filters=helper.getFilterDatesForLastFortnight();
+	if(req.params.sort){
+		sort = utils.isJson(req.params.sort) ? JSON.parse(req.params.sort):req.params.sort;
+	}
+	DeliveryItem.find({user_id:req.params.user_id,date_created:{$gte:filters.startDate, $lte:filters.endDate},overall_status:CONSTANTS.OVERALLSTATUS.FINISHED})
 		.sort(sort.name)
 		.skip(sort.skip)
 		.limit(sort.limit || limitForSort)
