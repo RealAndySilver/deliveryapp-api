@@ -26,9 +26,9 @@ var imageUtilities = require('../classes/uploader');
 //MongoDB Connection /////////////
 //////////////////////////////////
 //test Iam studio
-mongoose.connect("mongodb://vueltap:vueltap123@ds015909.mlab.com:15909/vueltap");
+//mongoose.connect("mongodb://vueltap:vueltap123@ds015909.mlab.com:15909/vueltap");
 //Test Vueltap
-//mongoose.connect("mongodb://iAmUser:iAmStudio1@ds015942.mlab.com:15942/vueltap-dev");
+mongoose.connect("mongodb://iAmUser:iAmStudio1@ds015942.mlab.com:15942/vueltap-dev");
 //////////////////////////////////
 //End of MongoDB Connection///////
 //////////////////////////////////
@@ -1233,8 +1233,11 @@ utils.log("Messenger","Recibo:",JSON.stringify(req.body));
 		profile_pic: {},
 	}).save(function(err,object){
 		if(err){
-			console.log("error: "+err);
-			res.json(err);
+			if (err.code==11000){
+				res.json({status: false, error: "Correo ya esta registrado", response: err});
+			}else{
+				res.json({status: false, error: err.errmsg, response: err});
+			}
 		}
 		else{
 			//Una vez creado el documento en la base de datos procedemos a enviar un email
