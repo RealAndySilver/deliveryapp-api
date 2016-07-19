@@ -228,7 +228,7 @@ var DeliveryItemSchema= new mongoose.Schema({
 	price_to_pay : {type: Number, required:false},
     service_price : {type: Number, required:false},
 	payment_method : {type: String, required:false}, //credit , cash
-	payment_token_id : {type: String, required:false},
+	payment_token_id : {type: mongoose.Schema.Types.ObjectId, ref: 'PaymentToken', required:false},
 	trn_ids :[{type: mongoose.Schema.Types.ObjectId, ref: 'PlaceToPayTrn',required:false}], //stores the transaction id sent by p2p
 	overall_status : {type: String, required:true}, //requested,started, finished
 	status : {type: String, required:true}, //available, accepted, in-transit, delivered, returning, returned, aborted
@@ -300,6 +300,8 @@ var PaymentTokenSchema= new mongoose.Schema({
 	card_holder_city: String,
 	card_holder_doc_type: String,
 	card_holder_doc_number: String,
+	card_holder_email:String,
+	active : {type:Boolean}
 }),
 	PaymentToken= mongoose.model('PaymentToken',PaymentTokenSchema);
 //////////////////////////////////
@@ -542,7 +544,7 @@ helper.findDeliveryItemsWithPmntInfo=function(filter,req,res){
         .populate({
             path: 'trn_ids',
             match: { trn_type:payments.getTrnTypes().SETTLE}
-        }).exec(function(err,objects){
+        }).populate('payment_token_id').exec(function(err,objects){
             if(err){
                 res.json({status: false, error: "not found"});
             }
@@ -1706,7 +1708,7 @@ exports.getDeliveryItemByID = function(req,res){
 	DeliveryItem.findOne({_id:req.params.delivery_id}).populate({
         path: 'trn_ids',
         match: { trn_type:payments.getTrnTypes().SETTLE}
-    }).exec(function(err,object){
+    }).populate('payment_token_id').exec(function(err,object){
 		if(!object){
 			res.json({status: false, error: "not found"});
 		}
@@ -3649,7 +3651,7 @@ var notifyEvent = function(type,inputObject,status){
 */
 exports.getPaymentMethodsByUser = function(req,res){
 	//console.log ("User ",req.params.user_id);
-	PaymentToken.find({user_id:req.params.user_id})
+	PaymentToken.find({user_id:req.params.user_id,active:true})
 	.select('-token')
 	.exec(function(err,objects){
 		if(err){
@@ -3687,6 +3689,8 @@ exports.createPaymentMethod = function(req,res){
 					card_holder_city: req.body.card_holder_city,
 					card_holder_doc_type: req.body.card_holder_doc_type,
 					card_holder_doc_number: req.body.card_holder_doc_number,
+					card_holder_email :	req.body.card_holder_email,
+					active:true
 					}).save(function(err3,object){
 						if(err3){
 							res.json({status: false, message: "Error al registrar el metodo de pago "+err3 , err: err3});
@@ -3719,7 +3723,8 @@ exports.deletePaymentMethod = function(req,res){
 		else{
 			payments.deleteToken(object.token,function(err2, result, raw, soapHeader){
 				if (!err2 && result.invalidateTokenResult=='OK'){
-					PaymentToken.remove({_id:req.params.pmt_method_id},function(err3){
+					PaymentToken.findOneAndUpdate({_id:req.params.pmt_method_id},{active:false},
+						function(err3){
 					if(err3){
 						res.json({status: false, error: "Error eliminando Payment Method", err: err3});
 					}

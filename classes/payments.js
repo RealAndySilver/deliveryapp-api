@@ -86,6 +86,9 @@ var createFormDataCaptOnly=function(pmntTkn,customerIP,invoiceNum,amount,custome
             x_email:customer.email,
             x_mobile:customer.mobilephone,
             x_city:pmntTkn.card_holder_city,
+            x_country:'CO',
+            x_email_customer:'TRUE',
+            x_email_merchant:'FALSE',
             x_address:pmntTkn.card_holder_address,}
 };
 
@@ -223,7 +226,7 @@ exports.voidTransaction = function(trnId,customerIP,franchise,callback){
 
 
 /**
- * Fucntion that connects with P2P for making an CAPTURE_ONLY charge to the credit card associated to a token
+ * Function that connects with P2P for making an CAPTURE_ONLY charge to the credit card associated to a token
 */
 exports.capturePaymentUsingToken=function(pmntTkn,customerIP,invoiceNum,amount,customer,callback){
     var formData=createFormDataCaptOnly(pmntTkn,customerIP,invoiceNum,amount,customer);
@@ -232,6 +235,7 @@ exports.capturePaymentUsingToken=function(pmntTkn,customerIP,invoiceNum,amount,c
         url: CONSTANTS.P2P_PARAMS.P2P_URL_FORM,
         headers: 
         {   //'postman-token': '15592359-7706-eb9c-ef2f-57f78eba273c',
+            'encoding': "text/html;charset='charset=ISO-8859-1'",
             'cache-control': 'no-cache',
             'content-type': 'multipart/form-data; boundary=---011000010111000001101001' },
             formData: formData};
