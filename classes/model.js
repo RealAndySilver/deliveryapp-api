@@ -1655,13 +1655,34 @@ utils.log("Delivery","Recibo:",JSON.stringify(req.body));
 	}
     
 	//New Implementacion
-	
 		User.findOne({_id:req.body.user_id},
 			function(errFndUsr,user){
 				if (!errFndUsr){
 					if (!user.active){
-						res.json({status: false, message: "No puedes solicitar servicios, tienes pagos pendientes."});
-						return;
+						var sort = {};
+						DeliveryItem.find({user_id:user._id})
+							.sort(sort.name)
+							.skip(sort.skip)
+							.limit(sort.limit || limitForSort)
+							.populate({
+								path: 'trn_ids',
+								match: { trn_type:payments.getTrnTypes().SETTLE}
+							}).populate('payment_token_id').exec(function(err,dlvItems){
+							if(err){
+								res.json({status: false, error: "not found"});
+							}
+							else{
+								for (var i=0;i<dlvItems.length;i++){
+									if (dlvItems[i].trn_ids[0] && dlvItems[i].trn_ids[0].status==='3'){
+										res.json({status: false, message: "001",response:dlvItems[i]});
+										return;
+									}
+								}
+								res.json({status: false, message: "No puedes solicitar servicios, presentas pagos pendientes."});
+								return;
+							}
+						});
+
 					}
 					if (req.body.payment_method === CONSTANTS.PMNT_METHODS.CREDIT){
 						PaymentToken.findOne({_id:req.body.token_id},
