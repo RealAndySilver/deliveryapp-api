@@ -53,6 +53,7 @@ var verifyEmailVar = true;
 var CONSTANTS = {
 	DISCLAIMER_USER_PATH:webapp+webRootFolder+'assets/pdf/TermsUsuario.pdf',
 	DISCLAIMER_MESSENGER_PATH:webapp+webRootFolder+'assets/pdf/TermsMensajero.pdf',
+	FAQ_P2P_PATH:webapp+webRootFolder+'assets/pdf/FAQPlaceToPay.pdf',
 	STATUS : {
 		SYSTEM : {
 			AVAILABLE : 'available',
@@ -3556,6 +3557,18 @@ exports.getDisclarimerPDF = function (req,res){
 		res.end();
 	}
 	
+};
+
+
+/**
+ *
+ * Returns the PDF to be displayed over the agreement screen
+ */
+exports.getPDFDocument = function (req,res){
+	if (req.params.document_key=='faq_p2p'){
+		res.writeHead(301,{Location: CONSTANTS.FAQ_P2P_PATH});
+		res.end();
+	}
 };
 
 

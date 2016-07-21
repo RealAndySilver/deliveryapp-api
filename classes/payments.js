@@ -83,12 +83,12 @@ var createFormDataCaptOnly=function(pmntTkn,customerIP,invoiceNum,amount,custome
             x_first_name: pmntTkn.card_holder_first_name+'',
             x_last_name: pmntTkn.card_holder_last_name+'',
             x_currency_code: 'COP',
-            x_email:customer.email,
+            x_email:pmntTkn.card_holder_email,
             x_mobile:customer.mobilephone,
             x_city:pmntTkn.card_holder_city,
             x_country:'CO',
             x_email_customer:'TRUE',
-            x_email_merchant:'FALSE',
+            x_email_merchant:'TRUE',
             x_address:pmntTkn.card_holder_address,}
 };
 
@@ -192,6 +192,7 @@ exports.settleTransaction = function(trnId,customerIP,franchise,callback){
         url: CONSTANTS.P2P_PARAMS.P2P_URL_FORM,
         headers: 
         {   //'postman-token': '15592359-7706-eb9c-ef2f-57f78eba273c',
+            'encoding': "text/html;charset='charset=ISO-8859-1'",
             'cache-control': 'no-cache',
             'content-type': 'multipart/form-data; boundary=---011000010111000001101001' },
             formData: formData};
@@ -213,6 +214,7 @@ exports.voidTransaction = function(trnId,customerIP,franchise,callback){
         url: CONSTANTS.P2P_PARAMS.P2P_URL_FORM,
         headers: 
         {   //'postman-token': '15592359-7706-eb9c-ef2f-57f78eba273c',
+            'encoding': "text/html;charset='charset=ISO-8859-1'",
             'cache-control': 'no-cache',
             'content-type': 'multipart/form-data; boundary=---011000010111000001101001' },
             formData: formData};
