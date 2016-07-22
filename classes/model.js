@@ -318,6 +318,7 @@ var PlaceToPayTrnSchema = new mongoose.Schema({
     p2p_response:String,
     date_sent:{type:Date},
 	reject_reason:String,
+	reject_reason_code:String,
 	franchise:String,
 	bank:String,
 	receipt_number:String,
@@ -563,6 +564,7 @@ helper.populatePlacetoPayTrnFromP2PResponse=function(p_user_id,p_ip_address,p2pR
         p2p_response:p2pResArray,
         date_sent:new Date(),
 		reject_reason:p2pResArray[3],
+		reject_reason_code:p2pResArray[2],
 		franchise:payments.getFranchiseNameByP2PAlias(p2pResArray[43]),
 		bank:p2pResArray[44],
 		receipt_number:p2pResArray[50],
@@ -3696,9 +3698,56 @@ exports.getPaymentMethodsByUser = function(req,res){
 	});
 }
 
+/**
+ * Servicio que procesa las transacciones pendientes de P2P. Este servicio es llamado desde
+ * un cron programado cada 10 minutos y revisa contra P2P las transacciones pendientes y les
+ * actualiza el estado.
+ *
+ * */
+exports.processPendingPayments= function(req,res){
+	utils.log("Payments/ProcessPendingPayments","Recibo:",JSON.stringify(req.body));
+	PlaceToPayTrn.find({trn_type:payments.getTrnTypes().SETTLE/*,status:'3'*/},
+		function(error,trns){
+			if (!error){
+				var trnsError=0,trnsAprobadas=0,trnsRechazadas=0;
+				if (trns && trns.length>0){
+					for (var i=0;i<trns.length;i++){
+						console.log("LLAMANDO ",trns[i].reference,trns[i].amount);
+						payments.queryTransactionStatus(trns[i],
+							function (err, result, raw, soapHeader,tran){
+							if (!err){
+								if (result.queryTransactionResult.item[0].responseCode!==3){
+									PlaceToPayTrn.findOneAndUpdate({_id:tran._id},
+										{status:result.queryTransactionResult.item[0].responseCode,
+											reject_reason:result.queryTransactionResult.item[0].responseReasonText,
+											reject_reason_code:result.queryTransactionResult.item[0].responseReasonCode},
+										function(err){
+
+									});
+									//console.log("RESULT ",result.queryTransactionResult.item[0].reference," ESTADO ",result.queryTransactionResult.item[0].responseCode);
+									//console.log("RESULT ",result.queryTransactionResult.item[0]);
+								}
+								//console.log("RESULT ",result.queryTransactionResult.item[0].reference," ESTADO ",result.queryTransactionResult.item[0].responseCode);
+							}else{
+								//console.log("ERROR ",err);
+								trnsError++;
+							}
+
+						});
+					}
+					res.json({status: true, message: "TOTAL TRNS "+trns.length});
+				}else{
+					res.json({status: false, error: "NO HAY TRANSACCIONES PENDIENTES "});
+				}
+			}else{
+				res.json({status: false, error: "ERROR "+error });
+			}
+		});
+}
 
 /**
-*Servicio que crea un nuevo metodo de pago asociado a un usuario
+ *
+ * Servicio que crea un nuevo metodo de pago asociado a un usuario
 **/
 exports.createPaymentMethod = function(req,res){
 	utils.log("Payments/CreatePaymentMethod","Recibo:",JSON.stringify(req.body));

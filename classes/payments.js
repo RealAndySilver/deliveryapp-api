@@ -156,12 +156,35 @@ exports.createToken = function(user,card_number,cvv,exp_date,callback){
         var args = {auth:createAuthObject(),cardInfo:cardInfoParams,owner:personParams}                
 
         client.tokenizeCard(args, function(err, result, raw, soapHeader) {
-            //console.log(" LR ",client.lastRequest );
+            console.log(" LR ",client.lastRequest );
             //console.log(" RSLT ",result);
             callback(err, result, raw, soapHeader);
       });
     }else{
          callback("SOAP client not initialized");
+    }
+};
+
+/**
+ *Function that connects with Place 2 Pay in order to obtain the current status for a
+ * given transaction
+ */
+exports.queryTransactionStatus = function(transaction,callback){
+    if (client){
+        var requestParams =  {reference:transaction.reference,
+            currency:'COP',
+            totalAmount:transaction.amount};
+
+        var args = {auth:createAuthObject(),request:requestParams}
+       // console.log("Llamando con ",requestParams);
+        client.queryTransaction(args, function(err, result, raw, soapHeader) {
+            //console.log(" LR ",client.lastRequest );
+            //console.log(" RSLT ",result);
+            //console.log(" ERR ",err);
+            callback(err, result, raw, soapHeader,transaction);
+        });
+    }else{
+        callback("SOAP client not initialized");
     }
 };
 
