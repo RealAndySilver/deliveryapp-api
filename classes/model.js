@@ -3706,7 +3706,7 @@ exports.getPaymentMethodsByUser = function(req,res){
  * */
 exports.processPendingPayments= function(req,res){
 	utils.log("Payments/ProcessPendingPayments","Recibo:",JSON.stringify(req.body));
-	PlaceToPayTrn.find({trn_type:payments.getTrnTypes().SETTLE/*,status:'3'*/},
+	PlaceToPayTrn.find({trn_type:payments.getTrnTypes().SETTLE,status:'3'},
 		function(error,trns){
 			if (!error){
 				var trnsError=0,trnsAprobadas=0,trnsRechazadas=0;
