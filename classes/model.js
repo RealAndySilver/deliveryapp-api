@@ -54,6 +54,8 @@ var CONSTANTS = {
 	DISCLAIMER_USER_PATH:webapp+webRootFolder+'assets/pdf/TermsUsuario.pdf',
 	DISCLAIMER_MESSENGER_PATH:webapp+webRootFolder+'assets/pdf/TermsMensajero.pdf',
 	FAQ_P2P_PATH:webapp+webRootFolder+'assets/pdf/FAQPlaceToPay.pdf',
+	AUTHORIZATION_PATH:webapp+webRootFolder+'assets/pdf/Autorizacion.pdf',
+	DATA_POLICY_PATH:webapp+webRootFolder+'assets/pdf/PoliticaDatos.pdf',
 	STATUS : {
 		SYSTEM : {
 			AVAILABLE : 'available',
@@ -3592,6 +3594,15 @@ exports.getPDFDocument = function (req,res){
 		res.writeHead(301,{Location: CONSTANTS.FAQ_P2P_PATH});
 		res.end();
 	}
+	if (req.params.document_key=='auth'){
+		res.writeHead(301,{Location: CONSTANTS.AUTHORIZATION_PATH});
+		res.end();
+	}
+	if (req.params.document_key=='data_policy'){
+		res.writeHead(301,{Location: CONSTANTS.DATA_POLICY_PATH});
+		res.end();
+	}
+
 };
 
 
