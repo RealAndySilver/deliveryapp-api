@@ -106,6 +106,8 @@ var createFormDataSettle=function(trnId,customerIP,franchise){
         x_type: CONSTANTS.P2P_PARAMS.TRN_TYPES.SETTLE,
         x_customer_ip: customerIP,
         x_franchise: franchise,
+        x_email_customer:'TRUE',
+        x_email_merchant:'TRUE',
         x_parent_session: trnId,
     };
 };
