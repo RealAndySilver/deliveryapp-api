@@ -1627,6 +1627,40 @@ exports.messengerInvite = function(req,res){
 //Delivery CRUD starts here///////
 //////////////////////////////////
 
+/**
+ * This service checks if already ecists active DeliveryItems
+ * associated to the user sent as param
+ * */
+exports.checkExistingDeliveries = function(req,res){
+	utils.log("/DeliveryItem/CheckExisting","Recibo:",JSON.stringify(req.params));
+	var sort = {};
+	if(req.params.sort){
+		sort = utils.isJson(req.params.sort) ? JSON.parse(req.params.sort):req.params.sort;
+	}
+	var filter={user_id:req.params.user_id, $or:[{overall_status:'requested'},{overall_status:'started'}]};
+	DeliveryItem.find(filter)
+		.sort(sort.name)
+		.skip(sort.skip)
+		.limit(sort.limit || limitForSort)
+		.populate({
+			path: 'trn_ids',
+		}).populate('payment_token_id').exec(function(err,dlvItems){
+		if(err){
+			res.json({status: false, error: "not found"});
+		}
+		else{
+			for (var i=0;i<dlvItems.length;i++){
+				if (dlvItems[i].payment_method === CONSTANTS.PMNT_METHODS.CREDIT){
+					res.json({status: true, message: "001",response:dlvItems[i]});
+					return;
+				}
+			}
+			res.json({status: false, message: "No hay servicios pendientes"});
+			return;
+		}
+	});
+}
+
 
 /**
  * This service creates a new Delivery Item and sends a Capture to the PLace 2 Pay platform if payment type
@@ -3717,7 +3751,11 @@ exports.getPaymentMethodsByUser = function(req,res){
  * */
 exports.processPendingPayments= function(req,res){
 	utils.log("Payments/ProcessPendingPayments","Recibo:",JSON.stringify(req.body));
-	PlaceToPayTrn.find({status:payments.getStatusList().PENDING},
+	var filter={status:payments.getStatusList().PENDING};
+	if (req.body.reference){
+		filter={reference:req.body.reference};
+	}
+	PlaceToPayTrn.find(filter,
 		function(error,trns){
 			if (!error){
 				var trnsError=0,trnsAprobadas=0,trnsRechazadas=0;
@@ -3727,6 +3765,7 @@ exports.processPendingPayments= function(req,res){
 						payments.queryTransactionStatus(trns[i],
 							function (err, result, raw, soapHeader,tran){
 							if (!err){
+								console.log('RESULT ',result.queryTransactionResult.item[0]);
 								if (result.queryTransactionResult.item[0].responseCode!==3){
 									PlaceToPayTrn.findOneAndUpdate({_id:tran._id},
 										{status:result.queryTransactionResult.item[0].responseCode,

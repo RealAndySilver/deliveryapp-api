@@ -162,6 +162,7 @@ app.put('/api_1.0/Messenger/Invite', model.messengerInvite);
 //DeliveryItem Create APIs
 app.post('/api_1.0/DeliveryItem/Create', model.createDelivery);
 //DeliveryItem Read APIs
+app.get('/api_1.0/DeliveryItem/CheckExisting/:user_id', model.checkExistingDeliveries);
 app.get('/api_1.0/DeliveryItem/:delivery_id', model.getDeliveryItemByID);
 app.get('/api_1.0/DeliveryItem/UserActive/:user_id/:sort?', model.getUserActive);
 app.get('/api_1.0/DeliveryItem/UserFinished/:user_id/:sort?', model.getUserFinished);
