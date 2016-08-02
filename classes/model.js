@@ -26,9 +26,9 @@ var imageUtilities = require('../classes/uploader');
 //MongoDB Connection /////////////
 //////////////////////////////////
 //test Iam studio
-//mongoose.connect("mongodb://vueltap:vueltap123@ds015909.mlab.com:15909/vueltap");
+mongoose.connect("mongodb://vueltap:vueltap123@ds015909.mlab.com:15909/vueltap");
 //Test Vueltap
-mongoose.connect("mongodb://iAmUser:iAmStudio1@ds015942.mlab.com:15942/vueltap-dev");
+//mongoose.connect("mongodb://iAmUser:iAmStudio1@ds015942.mlab.com:15942/vueltap-dev");
 //////////////////////////////////
 //End of MongoDB Connection///////
 //////////////////////////////////
@@ -1291,13 +1291,19 @@ utils.log("Messenger","Recibo:",JSON.stringify(req.body));
 		else{
 			//Una vez creado el documento en la base de datos procedemos a enviar un email
 			//de confirmación
-			mail.send("Bienvenido a Vueltap", "Ingrese sus documentos en la url "+webapp+webRootFolder+"#/uploadFilesMessenger/"+object._id,req.body.email);
+			mail.send("Bienvenido a Vueltap",mail_template.messenger_new_account(object, webapp+webRootFolder+"#/uploadFilesMessenger/"+object._id,webapp+webRootFolder+'assets/img/Vueltap_logo.png'),req.body.email);
 			//emailVerification(req,object,'messenger');
 			utils.log("Messenger","Envío:",JSON.stringify(object));
 			res.json({status: true, message: "Mensajero creado exitosamente. Proceder a activar la cuenta.", response: object});
 		}
 	});
 };
+
+/*exports.testEmail=function(req,res){
+	mail.send("Bienvenido a Vueltap",mail_template.messenger_new_account(null, webapp+webRootFolder+"#/uploadFilesMessenger/",webapp+webRootFolder+'assets/img/Yapp.png'),'julian.david_m@hotmail.com');
+	res.json({status: true, message: "Mensajero creado exitosamente. Proceder a activar la cuenta."});
+}*/
+
 //Read One*
 exports.getMessengerByEmail = function(req,res){
 	//Esta función expone un servicio para buscar un mensajero por email

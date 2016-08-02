@@ -1,3 +1,20 @@
+var fs = require('fs');
+var HTML_TEMPLATES={};
+
+var initHtmlTemplates=function () {
+	fs.readFile('./public/html_templates/new_messenger_email.html','utf8', function (err, html) {
+		if (err) {
+			throw err;
+		}
+		//console.log(html);
+		HTML_TEMPLATES.NEW_MESSENGER=html;
+		//console.log(HTML_TEMPLATES.NEW_MESSENGER);
+	});
+
+};
+
+initHtmlTemplates();
+
 exports.doctor_new_account = function(object,url) {
 	var result = "Estimado (a) Mensajero(a)  "+ object.name+" "+object.lastname+"<br>"+
 
@@ -19,6 +36,14 @@ exports.doctor_new_account = function(object,url) {
 	"Saludos! La App de Mensajería";
 	return result;
 }
+
+exports.messenger_new_account = function (messenger,url,logoUrl){
+	var newMessage=HTML_TEMPLATES.NEW_MESSENGER.replace('@LOGO_URL',logoUrl);
+	newMessage=newMessage.replace('@DOCS_URL',url);
+	newMessage=newMessage.replace('@MESSENGER_NAME',messenger.name+' '+messenger.lastname);
+	return newMessage;
+}
+
 exports.user_new_account = function(object,url) {
 	var result = "Hola "+object.name+". <br>Vueltap te permite encontrar mensajeros <b>al instante, en línea, cerca de ti!</b><br> Tu Usuario: "+ object.email+"<br> Agenda ya tu próximo envío <a href='"+url+"'> Vueltap </a><br>Saludos! La App de Vueltap";
 	return result;
