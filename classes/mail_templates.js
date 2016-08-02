@@ -11,6 +11,15 @@ var initHtmlTemplates=function () {
 		//console.log(HTML_TEMPLATES.NEW_MESSENGER);
 	});
 
+	fs.readFile('./public/html_templates/payment_rejected_email.html','utf8', function (err, html) {
+		if (err) {
+			throw err;
+		}
+		//console.log(html);
+		HTML_TEMPLATES.PMNT_REJECTED_EMAIL=html;
+		//console.log(HTML_TEMPLATES.NEW_MESSENGER);
+	});
+
 };
 
 initHtmlTemplates();
@@ -54,9 +63,11 @@ exports.email_verification = function(object,url) {
 	return result;
 }
 
-exports.payment_rejected_email = function(user,dlvrItem) {
-	var result = "Hola "+user.name+"!. <br>Se presento un error procesado el pago de tu servicio "+
-		dlvrItem.item_name+" por valor de "+dlvrItem.price_to_pay+
-		"<br>Tu cuenta ha sido desactivada <br>Saludos! La App de Vueltap :).";
-	return result;
+exports.payment_rejected_email = function(user,dlvrItem,url,logoUrl) {
+	var newMessage=HTML_TEMPLATES.NEW_MESSENGER.replace('@LOGO_URL',logoUrl);
+	newMessage=newMessage.replace('@DETAIL_URL',url);
+	newMessage=newMessage.replace('@SERVICE_NAME',dlvrItem.item_name);
+	newMessage=newMessage.replace('@SERVICE_PRICE',dlvrItem.price_to_pay);
+	newMessage=newMessage.replace('@MESSENGER_NAME',user.name+' '+user.lastname);
+	return newMessage;
 }

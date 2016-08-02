@@ -56,6 +56,7 @@ var CONSTANTS = {
 	FAQ_P2P_PATH:webapp+webRootFolder+'assets/pdf/FAQPlaceToPay.pdf',
 	AUTHORIZATION_PATH:webapp+webRootFolder+'assets/pdf/Autorizacion.pdf',
 	DATA_POLICY_PATH:webapp+webRootFolder+'assets/pdf/PoliticaDatos.pdf',
+	LOGO_PATH:webapp+webRootFolder+'assets/img/Vueltap_logo.png',
 	STATUS : {
 		SYSTEM : {
 			AVAILABLE : 'available',
@@ -438,8 +439,8 @@ helper.settlePaymentHelper=function(res,req,dlvrItem){
 									if (errorPayment || resPmt[0]!=payments.getStatusList().APPROVED){
 										User.findOne({_id:dlvrItem.user_id},
 											function(errFndUser,user){
-												mail.send("Error Procesando Pago", mail_template.payment_rejected_email(user,dlvrItem), user.email);
-												mail.send("Error Procesando Pago", mail_template.payment_rejected_email(user,dlvrItem), administratorEmail);
+												mail.send("Error Procesando Pago", mail_template.payment_rejected_email(user,dlvrItem,webapp+webRootFolder+"#/servicedetails/"+dlvrItem._id,CONSTANTS.LOGO_PATH), user.email);
+												mail.send("Error Procesando Pago", mail_template.payment_rejected_email(user,dlvrItem,webapp+webRootFolder+"#/servicedetails/"+dlvrItem._id,CONSTANTS.LOGO_PATH), administratorEmail);
 												user.active=false;
 												user.save(function(errSve,newUser){});
 											});
@@ -1291,7 +1292,7 @@ utils.log("Messenger","Recibo:",JSON.stringify(req.body));
 		else{
 			//Una vez creado el documento en la base de datos procedemos a enviar un email
 			//de confirmación
-			mail.send("Bienvenido a Vueltap",mail_template.messenger_new_account(object, webapp+webRootFolder+"#/uploadFilesMessenger/"+object._id,webapp+webRootFolder+'assets/img/Vueltap_logo.png'),req.body.email);
+			mail.send("Bienvenido a Vueltap",mail_template.messenger_new_account(object, webapp+webRootFolder+"#/uploadFilesMessenger/"+object._id,CONSTANTS.LOGO_PATH),req.body.email);
 			//emailVerification(req,object,'messenger');
 			utils.log("Messenger","Envío:",JSON.stringify(object));
 			res.json({status: true, message: "Mensajero creado exitosamente. Proceder a activar la cuenta.", response: object});
