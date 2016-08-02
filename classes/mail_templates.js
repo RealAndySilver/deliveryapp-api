@@ -64,7 +64,7 @@ exports.email_verification = function(object,url) {
 }
 
 exports.payment_rejected_email = function(user,dlvrItem,url,logoUrl) {
-	var newMessage=HTML_TEMPLATES.NEW_MESSENGER.replace('@LOGO_URL',logoUrl);
+	var newMessage=HTML_TEMPLATES.PMNT_REJECTED_EMAIL.replace('@LOGO_URL',logoUrl);
 	newMessage=newMessage.replace('@DETAIL_URL',url);
 	newMessage=newMessage.replace('@SERVICE_NAME',dlvrItem.item_name);
 	newMessage=newMessage.replace('@SERVICE_PRICE',dlvrItem.price_to_pay);
