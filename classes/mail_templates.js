@@ -68,6 +68,6 @@ exports.payment_rejected_email = function(user,dlvrItem,url,logoUrl) {
 	newMessage=newMessage.replace('@DETAIL_URL',url);
 	newMessage=newMessage.replace('@SERVICE_NAME',dlvrItem.item_name);
 	newMessage=newMessage.replace('@SERVICE_PRICE',dlvrItem.price_to_pay);
-	newMessage=newMessage.replace('@MESSENGER_NAME',user.name+' '+user.lastname);
+	newMessage=newMessage.replace('@USER_NAME',user.name+' '+user.lastname);
 	return newMessage;
 }
