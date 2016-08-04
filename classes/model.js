@@ -26,9 +26,9 @@ var imageUtilities = require('../classes/uploader');
 //MongoDB Connection /////////////
 //////////////////////////////////
 //test Iam studio
-mongoose.connect("mongodb://vueltap:vueltap123@ds015909.mlab.com:15909/vueltap");
-//Test Vueltap
-//mongoose.connect("mongodb://iAmUser:iAmStudio1@ds015942.mlab.com:15942/vueltap-dev");
+//mongoose.connect("mongodb://vueltap:vueltap123@ds015909.mlab.com:15909/vueltap");
+//Produccion Vueltap
+mongoose.connect("mongodb://iAmUser:iAmStudio1@ds015942.mlab.com:15942/vueltap-dev");
 //////////////////////////////////
 //End of MongoDB Connection///////
 //////////////////////////////////
@@ -915,6 +915,7 @@ exports.authenticateUser = function(req,res){
 						user.session.token= user.email;
 								user.session.exp_date = twoWeeks;
 								user.save(function(err, result){
+									console.log('ERROR ',err);
 									utils.log("User/Login","Envío:",JSON.stringify(result));
 									res.json({status: true, response: result, message:"Autenticado correctamente"});
 								});
@@ -1007,6 +1008,23 @@ exports.finishedDeliveries = function(req,res){
 		}
 	});
 };
+
+/**
+ *
+ * This service sets the active flag for the email in the param to true
+ *
+ * */
+exports.enableUserToRequestService = function(req,res){
+	User.findOneAndUpdate({email:req.params.user_email},{active:true},
+		function(errFndUpdUsr, user){
+			if (!errFndUpdUsr){
+				res.json({status: true, message: "Usuario Actualizado exitosamente."});
+			}else{
+				res.json({status: false, message: "Error Actualizando Usuario.", response: errFndUpdUsr});
+			}
+		});
+};
+
 //Update*
 exports.updateUser = function(req,res){
 //Esta función actualiza la información del usuario por medio de un PUT
@@ -1129,9 +1147,9 @@ exports.changePasswordUser = function(req,res){
 };
 //Delete
 exports.deleteUser = function(req,res){
-	User.remove({_id:req.params.id},function(err){
+	User.remove({_id:req.params.user_id},function(err){
 		if(err){
-			res.json(error.notFound);
+			res.json({status:false, message:err});
 		}
 		else{
 			res.json({status:true, message:"Usuario borrado exitosamente."});

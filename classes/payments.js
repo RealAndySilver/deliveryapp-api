@@ -10,7 +10,7 @@ var CONSTANTS = {
                     TRAN_KEY:"44GdUHpa",
                     P2P_URL_FORM:"https://www.placetopay.com/gateway/paymentdirect.php",
                     P2P_URL_WSDL:"https://www.placetopay.com/soap/PlacetoPay/?wsdl",
-                    IS_DEV:'TRUE',
+                    IS_DEV:'FALSE',
                     TRN_TYPES:
                                 {
                                     AUTH_ONLY:'AUTH_ONLY' ,

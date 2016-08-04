@@ -69,6 +69,7 @@ app.post('/api_1.0/Messenger/Create', security.passwordEncrypt);
 app.post('/api_1.0/User/NewPassword/*', security.passwordEncrypt);
 app.post('/api_1.0/Messenger/NewPassword/*', security.passwordEncrypt);
 app.post('/api_1.0/Payments/ProcessPendingPayments', model.processPendingPayments);
+app.put('/api_1.0/User/Active/:user_email', model.enableUserToRequestService);
 
 //////////////////////////////
 
