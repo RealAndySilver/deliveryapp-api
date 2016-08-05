@@ -26,9 +26,9 @@ var imageUtilities = require('../classes/uploader');
 //MongoDB Connection /////////////
 //////////////////////////////////
 //test Iam studio
-//mongoose.connect("mongodb://vueltap:vueltap123@ds015909.mlab.com:15909/vueltap");
+mongoose.connect("mongodb://vueltap:vueltap123@ds015909.mlab.com:15909/vueltap");
 //Produccion Vueltap
-mongoose.connect("mongodb://iAmUser:iAmStudio1@ds015942.mlab.com:15942/vueltap-dev");
+//mongoose.connect("mongodb://iAmUser:iAmStudio1@ds015942.mlab.com:15942/vueltap-dev");
 //////////////////////////////////
 //End of MongoDB Connection///////
 //////////////////////////////////
@@ -38,15 +38,15 @@ mongoose.connect("mongodb://iAmUser:iAmStudio1@ds015942.mlab.com:15942/vueltap-d
 //////////////////////////////////
 
 //Producción
-//var hostname = "https://vueltap.com:8080";
-//var webapp = "https://vueltap.com";
-//var webRootFolder = "/vueltap/";
-//var administratorEmail = "camilo@vueltap.com"
+var hostname = "https://vueltap.com:8080";
+var webapp = "https://vueltap.com";
+var webRootFolder = "/vueltap/";
+var administratorEmail = "camilo@vueltap.com"
 //Dev
-var hostname = "http://192.241.187.135:2000";
-var webapp = "http://192.185.136.242";
-var webRootFolder = "/~julian/vueltap/";
-var administratorEmail = "julian.montana@gmail.com";
+//var hostname = "http://192.241.187.135:2000";
+//var webapp = "http://192.185.136.242";
+//var webRootFolder = "/~julian/vueltap/";
+//var administratorEmail = "julian.montana@gmail.com";
 
 var exclude = {/*password:*/};
 var verifyEmailVar = true;
@@ -422,7 +422,7 @@ helper.createDeliveryItemHelper = function(req,res,trnId){
 
 
 /**
- *Esta fu
+ *Esta funcion envia el SETTLE a place to pay confirmando el pago de la transaccion
  *
  * */
 helper.settlePaymentHelper=function(res,req,dlvrItem){
@@ -602,6 +602,19 @@ helper.getFilterDatesForLastWeekReport=function(){
 	var filter={startDate:previousMonday,endDate:previousSunday};
 
 	return filter;
+};
+
+
+/**
+ * Envia correo de terminacion de servicio al usuario
+ * */
+helper.sendServiceFinishedEmail=function(dlvItem,messenger){
+	User.findOne({_id:dlvItem.user_id},
+		function(errFndUser,user){
+			if (!errFndUser){
+				mail.send("Servicio Terminado",mail_template.service_finished_email(dlvItem,messenger,user,CONSTANTS.LOGO_PATH,webapp+webRootFolder+"#/serviceDetails/"+dlvItem._id,webapp+webRootFolder+"assets/img/"),user.email);
+			}
+		});
 };
 
 /**
@@ -1318,10 +1331,10 @@ utils.log("Messenger","Recibo:",JSON.stringify(req.body));
 	});
 };
 
-/*exports.testEmail=function(req,res){
-	mail.send("Bienvenido a Vueltap",mail_template.messenger_new_account(null, webapp+webRootFolder+"#/uploadFilesMessenger/",webapp+webRootFolder+'assets/img/Yapp.png'),'julian.david_m@hotmail.com');
+exports.testEmail=function(req,res){
+	mail.send("Servicio Terminado",mail_template.service_finished_email(null,null,CONSTANTS.LOGO_PATH,webapp+webRootFolder+"#/serviceDetails/",webapp+webRootFolder+"assets/img"),'vueltap@mailinator.com');
 	res.json({status: true, message: "Mensajero creado exitosamente. Proceder a activar la cuenta."});
-}*/
+}
 
 //Read One*
 exports.getMessengerByEmail = function(req,res){
@@ -2345,6 +2358,12 @@ exports.changeStatusReturned = function(req,res){
 			}
 	});
 };
+
+/**
+ * Servicio usado desde el app de Mensajero para poder cambiar de estado el servicio de acuerdo
+ * al estado actual.
+ *
+ * */
 exports.changeStatus = function(req,res){
 	//Este método identifica el estado del pedido y continúa con el estado siguiente
 	//de manera automática
@@ -2460,10 +2479,11 @@ exports.changeStatus = function(req,res){
 					   	utils.log("DeliveryItem/Returned","Envío:",JSON.stringify(object));
 					   	Messenger.findOneAndUpdate({_id:req.body.messenger_info._id},
 									{$inc:{"stats.finished_services":1}}, 
-									function(err, user){
+									function(err, messenger){
 									if (object.payment_method===CONSTANTS.PMNT_METHODS.CREDIT){
                                         helper.settlePaymentHelper(res,req,object);
 									}
+									helper.sendServiceFinishedEmail(object,messenger);
                                     res.json({status:true,message:"DeliveryItem ahora está" + object.status,response:result});
    						});
 					});
@@ -2481,10 +2501,11 @@ exports.changeStatus = function(req,res){
 						utils.log("DeliveryItem/Delivered","Envío:",JSON.stringify(object));
 						Messenger.findOneAndUpdate({_id:req.body.messenger_info._id},
    									{$inc:{"stats.finished_services":1}}, 
-   							function(err, user){
+   							function(err, messenger){
    								if (object.payment_method===CONSTANTS.PMNT_METHODS.CREDIT) {
                                     helper.settlePaymentHelper(res, req, object);
                                 }
+								helper.sendServiceFinishedEmail(object,messenger);
                                 res.json({status:true,message:"DeliveryItem ahora está" + object.status,response:result});
    							});
 					});
@@ -2688,10 +2709,11 @@ exports.nextStatus = function(req,res){
 							notifyEvent("user",result,object.status);
 							utils.log("DeliveryItem/Delivered","Envío:",JSON.stringify(object));
 							Messenger.findOneAndUpdate({_id:req.body.messenger_info._id},{$inc:{"stats.finished_services":1}}, 
-	   						function(err, user){
+	   						function(err, messenger){
 		   						if (object.payment_method===CONSTANTS.PMNT_METHODS.CREDIT){
                                     helper.settlePaymentHelper(res, req, object);
 									}
+								helper.sendServiceFinishedEmail(object,messenger);
                                 res.json({  status:true,
 										    message:"DeliveryItem ahora está" + object.status,
 										    response:result});

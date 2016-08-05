@@ -20,6 +20,14 @@ var initHtmlTemplates=function () {
 		//console.log(HTML_TEMPLATES.NEW_MESSENGER);
 	});
 
+	fs.readFile('./public/html_templates/service_finished_email.html','utf8', function (err, html) {
+		if (err) {
+			throw err;
+		}
+		//console.log(html);
+		HTML_TEMPLATES.SRVC_FINISHED_EMAIL=html;
+		//console.log(HTML_TEMPLATES.NEW_MESSENGER);
+	});
 };
 
 initHtmlTemplates();
@@ -50,6 +58,31 @@ exports.messenger_new_account = function (messenger,url,logoUrl){
 	var newMessage=HTML_TEMPLATES.NEW_MESSENGER.replace('@LOGO_URL',logoUrl);
 	newMessage=newMessage.replace('@DOCS_URL',url);
 	newMessage=newMessage.replace('@MESSENGER_NAME',messenger.name+' '+messenger.lastname);
+	return newMessage;
+}
+
+exports.service_finished_email = function (dlvItem,messenger,user,logoUrl,urlServiceDetails,baseImageUrl){
+	var messengerPhoto=messenger.profile_pic?messenger.profile_pic.url:baseImageUrl+'/messenger_avatar.jpg';
+	var serviceDate=dlvItem.date_created.toISOString().substring(0,10);
+
+	var newMessage=HTML_TEMPLATES.SRVC_FINISHED_EMAIL.replace('@LOGO_URL',logoUrl);
+	newMessage=newMessage.replace('@SERV_DETAIL_URL',urlServiceDetails);
+	newMessage=newMessage.replace('@START_POINT_IMG_URL',baseImageUrl+'/punto_partida.png');
+	newMessage=newMessage.replace('@END_POINT_IMG_URL',baseImageUrl+'/punto_llegada.png');
+	newMessage=newMessage.replace('@MESSENGER_PHOTO_URL',messengerPhoto);
+	newMessage=newMessage.replace('@USER_NAME',user.name);
+	newMessage=newMessage.replace('@SERVICE_DATE',serviceDate);
+	newMessage=newMessage.replace('@START_ADDRESS',dlvItem.pickup_object.address);
+	newMessage=newMessage.replace('@END_ADDRESS',dlvItem.delivery_object.address);
+	newMessage=newMessage.replace('@SERVICE_PRICE',dlvItem.service_price);
+	newMessage=newMessage.replace('@INSURANCE_PRICE',dlvItem.insurance_price);
+	newMessage=newMessage.replace('@TOTAL_PRICE',dlvItem.price_to_pay);
+	newMessage=newMessage.replace('@MESSENGER_NAME',messenger.name+' '+messenger.lastname);
+	newMessage=newMessage.replace('@PLACA',messenger.plate);
+	//newMessage=newMessage.replace('@MODELO',);
+
+	//newMessage=newMessage.replace('@DOCS_URL',urlServiceDetails);BASE_IMG_URL
+	//newMessage=newMessage.replace('@MESSENGER_NAME',messenger.name+' '+messenger.lastname);
 	return newMessage;
 }
 
