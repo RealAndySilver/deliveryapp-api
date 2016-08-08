@@ -1331,10 +1331,10 @@ utils.log("Messenger","Recibo:",JSON.stringify(req.body));
 	});
 };
 
-exports.testEmail=function(req,res){
-	mail.send("Servicio Terminado",mail_template.service_finished_email(null,null,CONSTANTS.LOGO_PATH,webapp+webRootFolder+"#/serviceDetails/",webapp+webRootFolder+"assets/img"),'vueltap@mailinator.com');
+/*exports.testEmail=function(req,res){
+	mail.send("Servicio Terminado",mail_template.user_new_account({email:'juli'},'www.eltiempo.com'),'julian.david_m@hotmail.com');
 	res.json({status: true, message: "Mensajero creado exitosamente. Proceder a activar la cuenta."});
-}
+}*/
 
 //Read One*
 exports.getMessengerByEmail = function(req,res){
