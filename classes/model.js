@@ -1746,6 +1746,7 @@ utils.log("Delivery","Recibo:",JSON.stringify(req.body));
 							}).populate('payment_token_id').exec(function(err,dlvItems){
 							if(err){
 								res.json({status: false, error: "not found"});
+								return;
 							}
 							else{
 								for (var i=0;i<dlvItems.length;i++){
@@ -1758,40 +1759,40 @@ utils.log("Delivery","Recibo:",JSON.stringify(req.body));
 								return;
 							}
 						});
-
-					}
-					if (req.body.payment_method === CONSTANTS.PMNT_METHODS.CREDIT){
-						PaymentToken.findOne({_id:req.body.token_id},
-							function(errPmtTkn,pmntToken){
-								if (!errPmtTkn){
-									payments.capturePaymentUsingToken(pmntToken,req.body.ip_address,payments.generateRandomInvoiceNumber(),req.body.price_to_pay,user,
-									function(errorCreatePmnt,resPmt){
-										if (!errorCreatePmnt){
-											//console.log("RES ",resPmt);
-											var p2pTrnObject=helper.populatePlacetoPayTrnFromP2PResponse(req.body.user_id,req.body.ip_address,resPmt);
-											p2pTrnObject.save(
-											function(errCreateTrn,trnObject){
-												if (!errCreateTrn){
-													if (trnObject.status==payments.getStatusList().PENDING){
-														helper.createDeliveryItemHelper(req,res,trnObject._id);
-													}else{
-														res.json({status: false, message: "Error Procesando el pago. "+resPmt[3], response: "Transaccion rechazada en Place to Pay"});
-													}
+					}else{
+						if (req.body.payment_method === CONSTANTS.PMNT_METHODS.CREDIT){
+							PaymentToken.findOne({_id:req.body.token_id},
+								function(errPmtTkn,pmntToken){
+									if (!errPmtTkn){
+										payments.capturePaymentUsingToken(pmntToken,req.body.ip_address,payments.generateRandomInvoiceNumber(),req.body.price_to_pay,user,
+											function(errorCreatePmnt,resPmt){
+												if (!errorCreatePmnt){
+													//console.log("RES ",resPmt);
+													var p2pTrnObject=helper.populatePlacetoPayTrnFromP2PResponse(req.body.user_id,req.body.ip_address,resPmt);
+													p2pTrnObject.save(
+														function(errCreateTrn,trnObject){
+															if (!errCreateTrn){
+																if (trnObject.status==payments.getStatusList().PENDING){
+																	helper.createDeliveryItemHelper(req,res,trnObject._id);
+																}else{
+																	res.json({status: false, message: "Error Procesando el pago. "+resPmt[3], response: "Transaccion rechazada en Place to Pay"});
+																}
+															}else{
+																res.json({status: false, message: "Error creando pedido.", response: errCreateTrn});
+															}
+														});
 												}else{
-													res.json({status: false, message: "Error creando pedido.", response: errCreateTrn});
+													res.json({status: false, message: "Error creando pedido.", response: errorCreatePmnt});
 												}
 											});
-										}else{
-											res.json({status: false, message: "Error creando pedido.", response: errorCreatePmnt});
-										}
-									});
-								}else{
-									res.json({status: false, message: "Error creando pedido.", response: errPmtTkn});
-								}
-							});
-				}else{
-					helper.createDeliveryItemHelper(req,res,null);
-				}
+									}else{
+										res.json({status: false, message: "Error creando pedido.", response: errPmtTkn});
+									}
+								});
+						}else{
+							helper.createDeliveryItemHelper(req,res,null);
+						}
+					}
 			}else{
 				res.json({status: false, message: "No se encontro usuario.", response: errFndUsr});
 			}
