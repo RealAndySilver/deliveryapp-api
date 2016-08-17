@@ -3552,6 +3552,9 @@ exports.getPrice = function (req,res){
 				if(result<minPrice){
 				result = minPrice;
 				}
+				if (req.params.is_roundtrip==='true'){
+					result=result*2;
+				}
 				res.json(
 					{
 						status: true, 

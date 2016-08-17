@@ -58,7 +58,7 @@ app.get('/*', function(req, res, next){
 //Public Methods
 app.get('/api_1.0/CloseToMe/:lat/:lon', model.closeToMe);
 app.get('/api_1.0/GetInsuranceIntervals', model.getInsuranceIntervals);
-app.get('/api_1.0/GetPrice/:loc1/:loc2/:insurancevalue?', model.getPrice);
+app.get('/api_1.0/GetPrice/:loc1/:loc2/:is_roundtrip/:insurancevalue?', model.getPrice);
 app.get('/api_1.0/GetDisclaimerPDF/:disclaimer_type', model.getDisclarimerPDF);
 app.get('/api_1.0/GetPDFDocument/:document_key', model.getPDFDocument);
 
