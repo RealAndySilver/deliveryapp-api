@@ -3509,19 +3509,19 @@ exports.getPrice = function (req,res){
 	var insurancePrice = 0;
 	var minPrice = 3000;
 	if(req.params.insurancevalue){
-		insurancePrice = req.params.insurancevalue;
-/*
-		if(insurancePrice == 500000){
-			insurancePrice = 10000;
+		var insuranceValue = req.params.insurancevalue;
+		if(insuranceValue >0 && insuranceValue <=1000000){
+			insurancePrice = 1000;
 		}
-		else if(insurancePrice == 1000000){
-			insurancePrice = 20000;
+		else if(insuranceValue >1000000 && insuranceValue <=2000000){
+			insurancePrice = 2000;
 		}
-		else if(insurancePrice == 2000000){
-			insurancePrice = 30000;
+		else if(insuranceValue >2000000 && insuranceValue <=3000000){
+			insurancePrice = 3000;
+		}else{
+			insurancePrice = insuranceValue*0.02;
 		}
-*/
-		insurancePrice = insurancePrice*0.02;
+
 	}
 	
 	distance.get(
